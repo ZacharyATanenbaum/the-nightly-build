@@ -1,0 +1,8 @@
+title: "The Nightly Build"
+theme: engine/assets/themes/newspaper.css
+appearance: auto
+front: comfortable
+footer: "One story. Then you're done."
+
+directory:
+  description: "One researched story worth reading each night across AI, technology, markets, and policy."
