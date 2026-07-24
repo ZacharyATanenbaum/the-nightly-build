@@ -14,7 +14,7 @@ messages:
       {{research_pack}}
 
       Return a complete replacement object under the same contract. Use 1,350-1,850 prose words, four or five sections beginning with orientation, citations in every section, six or more distinct sources, two or more primary and two or more secondary.
-model: openai/gpt-5-mini
+model: openai/gpt-4.1
 modelParameters:
   maxCompletionTokens: 7500
   temperature: 0.1
