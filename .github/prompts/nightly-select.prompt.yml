@@ -14,7 +14,7 @@ messages:
       {{candidates}}
 
       Choose the strongest publishable subject. The search query and terms must be specific enough to retrieve additional reporting. Include at least two candidate primary URLs and at least two candidate secondary URLs when the record permits. Set publish=false when source depth is not proven.
-model: openai/gpt-5-mini
+model: openai/gpt-4.1
 modelParameters:
   maxCompletionTokens: 1800
   temperature: 0.1

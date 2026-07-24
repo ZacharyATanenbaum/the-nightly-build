@@ -139,6 +139,32 @@ def recent_library(library: pathlib.Path) -> list[dict[str, Any]]:
     return rows[:30]
 
 
+def prompt_candidates(ordered: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return a small, source-balanced commissioning view.
+
+    GitHub Models enforces request-size limits below several models' nominal
+    context windows. The full candidate record stays on disk for targeted
+    research; the commissioning model sees only enough evidence to select a
+    beat and exact starting URLs.
+    """
+    selected: list[dict[str, Any]] = []
+    for kind in ("primary", "secondary"):
+        selected.extend(row for row in ordered if row.get("kind_hint") == kind)
+        selected = selected[: 8 if kind == "primary" else 16]
+    selected.sort(key=lambda row: row.get("published_iso") or "", reverse=True)
+    return [
+        {
+            "title": str(row.get("title") or "")[:180],
+            "url": row["url"],
+            "summary": str(row.get("summary") or "")[:180],
+            "published": row.get("published_iso"),
+            "source_name": row.get("source_name"),
+            "kind_hint": row.get("kind_hint"),
+        }
+        for row in selected[:16]
+    ]
+
+
 def prepare(library_arg: str) -> int:
     ensure_work()
     library = pathlib.Path(library_arg).resolve()
@@ -194,11 +220,30 @@ def prepare(library_arg: str) -> int:
         key=lambda row: row.get("published_iso") or "",
         reverse=True,
     )[:140]
-    (WORK / "candidates.json").write_text(
+    recent = recent_library(library)
+    (WORK / "candidates-full.json").write_text(
         json.dumps(ordered, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    (WORK / "candidates.json").write_text(
+        json.dumps(prompt_candidates(ordered), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (WORK / "recent-full.json").write_text(
+        json.dumps(recent, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     (WORK / "recent.json").write_text(
-        json.dumps(recent_library(library), indent=2, ensure_ascii=False),
+        json.dumps(
+            [
+                {
+                    "slug": row.get("slug"),
+                    "date": row.get("date"),
+                    "title": row.get("title"),
+                }
+                for row in recent[:12]
+            ],
+            indent=2,
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     (WORK / "collection-errors.txt").write_text("\n".join(errors), encoding="utf-8")

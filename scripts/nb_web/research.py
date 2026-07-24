@@ -245,7 +245,7 @@ def research(selection_path: str) -> int:
         write_output("reason", str(selection.get("reason") or "selector declined"))
         return 0
 
-    candidates = json.loads((WORK / "candidates.json").read_text(encoding="utf-8"))
+    candidates = json.loads((WORK / "candidates-full.json").read_text(encoding="utf-8"))
     by_url = {row["url"]: row for row in candidates}
     chosen_urls = [normalize_url(url) for url in selection.get("primary_urls", [])]
     chosen_urls += [normalize_url(url) for url in selection.get("secondary_urls", [])]

@@ -151,7 +151,7 @@ def _render_article(
         "reading_minutes": 0,
         "dek": dek,
         "harness": "github-models-action",
-        "model": "openai/gpt-5-mini",
+        "model": "openai/gpt-4.1",
     }
 
     def build(meta_value: dict[str, Any]) -> str:
