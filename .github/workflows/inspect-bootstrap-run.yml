@@ -6,7 +6,6 @@ on:
       - .github/workflows/inspect-bootstrap-run.yml
 
 permissions:
-  actions: read
   contents: read
   pull-requests: write
 
@@ -14,24 +13,34 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Isolate the canonical-URL publication failure
+      - name: Verify the immutable published article URL
         env:
           GH_TOKEN: ${{ github.token }}
+          ARTICLE_URL: https://raw.githack.com/ZacharyATanenbaum/the-nightly-build/14bb4b57af5e605c17dfe5696ee8246488d4d493/library/the-one/chatgpt-health-data-path-governance.html
+          ASSET_URL: https://raw.githack.com/ZacharyATanenbaum/the-nightly-build/14bb4b57af5e605c17dfe5696ee8246488d4d493/assets/nb.css
         run: |
-          set -euo pipefail
-          run_id=30069879715
-          gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --log-failed > /tmp/failed.log 2>&1 || true
+          set +e
+          article_status=$(curl -L --retry 8 --retry-delay 4 --connect-timeout 15 \
+            -sS -o /tmp/article.html -w '%{http_code}' "$ARTICLE_URL")
+          article_code=$?
+          asset_status=$(curl -L --retry 8 --retry-delay 4 --connect-timeout 15 \
+            -sS -o /tmp/nb.css -w '%{http_code}' "$ASSET_URL")
+          asset_code=$?
+          title=$(grep -o '<title>[^<]*</title>' /tmp/article.html 2>/dev/null | head -n 1 || true)
+          metadata=$(grep -o '"slug": "chatgpt-health-data-path-governance"' /tmp/article.html 2>/dev/null | head -n 1 || true)
           {
-            echo "## Canonical-URL publication failure from run $run_id"
+            echo '## Published article verification'
             echo
-            echo '```text'
-            grep -E -C 5 'error:|fatal:|BLOCK:|WARN:|verdict:|Process completed|already exists|Resource not accessible|HTTP 4|exit code|not permitted|failed' /tmp/failed.log | tail -n 120 || true
-            echo '```'
-            echo
-            echo '## Final 60 log lines'
-            echo '```text'
-            tail -n 60 /tmp/failed.log
-            echo '```'
-          } > /tmp/bootstrap.md
+            echo "- Article URL: $ARTICLE_URL"
+            echo "- Article HTTP status: \`$article_status\` (curl exit \`$article_code\`)"
+            echo "- Stylesheet HTTP status: \`$asset_status\` (curl exit \`$asset_code\`)"
+            echo "- Title: \`$title\`"
+            echo "- Metadata marker: \`$metadata\`"
+          } > /tmp/verification.md
           gh pr comment "${{ github.event.pull_request.number }}" \
-            --repo "$GITHUB_REPOSITORY" --body-file /tmp/bootstrap.md
+            --repo "$GITHUB_REPOSITORY" --body-file /tmp/verification.md
+          if [ "$article_code" -ne 0 ] || [ "$asset_code" -ne 0 ] \
+            || [ "$article_status" != 200 ] || [ "$asset_status" != 200 ] \
+            || [ -z "$title" ] || [ -z "$metadata" ]; then
+            exit 1
+          fi
