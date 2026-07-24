@@ -7,41 +7,34 @@ on:
       - scripts/nb_web/**
 
 permissions:
-  contents: read
-  pull-requests: write
+  contents: write
 
 jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
 
-      - name: Capture targeted diagnostics
+      - name: Apply Ruff fixes and formatting
         run: |
-          set +e
-          {
-            echo '$ uv run ruff check scripts/web_night_shift.py scripts/nb_web'
-            uv run ruff check scripts/web_night_shift.py scripts/nb_web
-            echo
-            echo '$ uv run ruff format --check scripts/web_night_shift.py scripts/nb_web'
-            uv run ruff format --check scripts/web_night_shift.py scripts/nb_web
-          } > /tmp/night-shift-diagnostics.txt 2>&1
-          exit 0
+          uv run ruff check scripts/web_night_shift.py scripts/nb_web --fix --unsafe-fixes
+          uv run ruff format scripts/web_night_shift.py scripts/nb_web
+          uv run ruff check scripts/web_night_shift.py scripts/nb_web
+          uv run ruff format --check scripts/web_night_shift.py scripts/nb_web
 
-      - name: Post diagnostics
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Commit formatting
         run: |
-          {
-            echo '## Night-shift diagnostics'
-            echo '```text'
-            head -c 50000 /tmp/night-shift-diagnostics.txt
-            echo
-            echo '```'
-          } > /tmp/comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" \
-            --repo "$GITHUB_REPOSITORY" --body-file /tmp/comment.md
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/web_night_shift.py scripts/nb_web
+          git commit -m "style: format repository night shift"
+          git push origin "HEAD:${{ github.head_ref }}"
