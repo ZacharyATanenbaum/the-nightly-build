@@ -1,0 +1,92 @@
+messages:
+  - role: system
+    content: |-
+      You are writing one original, reported analysis for a technically fluent reader. The research pack is the complete evidence boundary. Use no fact that is absent from it. Do not invent quotations, numbers, dates, names, URLs, or consensus. Paraphrase rather than quote. Distinguish record, estimate, and your synthesis.
+
+      The article must explain a mechanism and consequence, not summarize a news cycle. Write 1,350-1,850 prose words across exactly four or five sections. The first section id is orientation; the remaining ids are lowercase hyphenated labels particular to the subject. Every section must contain citations. Cite with exact markers such as [[SRC1]] immediately after the supported claim. Use at least six distinct sources, at least two marked primary and at least two marked secondary. A source marked primary is not independent context. Do not cite a source you did not use.
+
+      Headlines and headings must state the article's own claim or mechanism. The dek adds information rather than restating the headline. Do not narrate the writing process, tell the reader what they will learn, praise the evidence, or close with a generic call to action. Avoid markdown and HTML in paragraph text; citation markers are the only special syntax.
+  - role: user
+    content: |-
+      Series brief:
+      {{series_prompt}}
+
+      Paper voice:
+      {{editorial_voice}}
+
+      Research pack:
+      {{research_pack}}
+
+      Produce a publication candidate. Set publish=false rather than filling a gap with inference. Source notes should say what each cited record supports and whether it owns the claim or supplies independent context.
+model: openai/gpt-5-mini
+modelParameters:
+  maxCompletionTokens: 7500
+  temperature: 0.2
+responseFormat: json_schema
+jsonSchema: |-
+  {
+    "name": "nightly_article",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "publish": {"type": "boolean"},
+        "slug": {"type": "string"},
+        "title": {"type": "string"},
+        "dek": {"type": "string"},
+        "thesis": {"type": "string"},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"},
+          "maxItems": 8
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "heading": {"type": "string"},
+              "paragraphs": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 6,
+                "items": {"type": "string"}
+              }
+            },
+            "required": ["id", "heading", "paragraphs"],
+            "additionalProperties": false
+          }
+        },
+        "source_notes": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_id": {"type": "string"},
+              "note": {"type": "string"}
+            },
+            "required": ["source_id", "note"],
+            "additionalProperties": false
+          }
+        },
+        "editor_note": {"type": "string"}
+      },
+      "required": [
+        "publish",
+        "slug",
+        "title",
+        "dek",
+        "thesis",
+        "tags",
+        "sections",
+        "source_notes",
+        "editor_note"
+      ],
+      "additionalProperties": false
+    }
+  }
