@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   apply:
@@ -19,12 +20,27 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - name: Apply and commit the first-edition wiring
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python scripts/apply_first_edition_patch.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/web-night-shift.yml
-          git add press/series/the-one/bootstrap-selection.json
-          git add -A scripts/apply_first_edition_patch.py
-          git commit -m "feat: bootstrap the first automated edition"
-          git push origin "HEAD:${{ github.head_ref }}"
+          set +e
+          {
+            python scripts/apply_first_edition_patch.py
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/workflows/web-night-shift.yml
+            git add press/series/the-one/bootstrap-selection.json
+            git add -A scripts/apply_first_edition_patch.py
+            git commit -m "feat: bootstrap the first automated edition"
+            git push origin "HEAD:${{ github.head_ref }}"
+          } > /tmp/bootstrap-patch.log 2>&1
+          code=$?
+          {
+            echo '## Bootstrap patch diagnostics'
+            echo '```text'
+            cat /tmp/bootstrap-patch.log
+            echo '```'
+          } > /tmp/bootstrap-patch-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" --body-file /tmp/bootstrap-patch-comment.md
+          exit "$code"
