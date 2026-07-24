@@ -23,12 +23,11 @@ jobs:
 
       - name: Validate and commit the patch
         run: |
+          ruby -e "require 'yaml'; YAML.load_file('.github/workflows/web-night-shift.yml')"
           python - <<'PY'
           import json
           from pathlib import Path
-          import yaml
 
-          yaml.safe_load(Path('.github/workflows/web-night-shift.yml').read_text())
           data = json.loads(Path('press/series/the-one/bootstrap-selection.json').read_text())
           required = {
               'publish', 'topic', 'angle', 'why_now', 'query', 'search_terms',
