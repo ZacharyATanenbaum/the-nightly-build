@@ -14,9 +14,10 @@ def test_bing_news_redirect_unwraps_to_the_https_publisher_url():
 
 
 def test_normalized_sources_are_https_and_drop_tracking_parameters():
-    assert normalize_url(
-        "http://example.com/report?utm_source=rss&item=1#fragment"
-    ) == "https://example.com/report?item=1"
+    assert (
+        normalize_url("http://example.com/report?utm_source=rss&item=1#fragment")
+        == "https://example.com/report?item=1"
+    )
 
 
 def test_unwrapped_publisher_is_classified_by_its_own_domain():
