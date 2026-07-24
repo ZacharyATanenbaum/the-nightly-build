@@ -6,14 +6,25 @@ on:
     types: [completed]
 
 permissions:
-  contents: read
-  issues: write
+  actions: read
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: web-run-status
+  cancel-in-progress: false
 
 jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - name: Update the automation status issue
+      - name: Checkout the status branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation-status
+          fetch-depth: 0
+
+      - name: Update the durable status file
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_NAME: ${{ github.event.workflow_run.name }}
@@ -21,28 +32,42 @@ jobs:
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           RUN_EVENT: ${{ github.event.workflow_run.event }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
-          title="Automation status: $RUN_NAME"
+          mkdir -p status
+
+          published_sha=$(git ls-remote origin refs/heads/gh-pages | awk '{print $1}')
+          if [ -n "$published_sha" ]; then
+            site_url="https://raw.githack.com/${GITHUB_REPOSITORY}/${published_sha}/index.html"
+          else
+            site_url="not published yet"
+          fi
+
+          article_url=$(gh pr list --repo "$GITHUB_REPOSITORY" --state all \
+            --search 'in:title "nb: the-one/"' --limit 20 \
+            --json number,url --jq 'sort_by(.number) | reverse | .[0].url // "none"')
+
+          status_file="status/${RUN_NAME}.md"
           {
-            echo "## Latest run"
+            echo "# Automation status: $RUN_NAME"
             echo
             echo "- Conclusion: **$RUN_CONCLUSION**"
             echo "- Trigger: \`$RUN_EVENT\`"
             echo "- Commit: \`$RUN_SHA\`"
+            echo "- Run ID: \`$RUN_ID\`"
             echo "- Run: $RUN_URL"
-            echo "- Site: https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+            echo "- Latest article PR: $article_url"
+            echo "- Published site: $site_url"
             echo
-            echo "This issue is updated in place after every completed run."
-          } > /tmp/status.md
+            echo "Updated by the trusted workflow-run reporter."
+          } > "$status_file"
 
-          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all \
-            --search "\"$title\" in:title" --json number,title \
-            --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)
-          if [ -z "$issue" ]; then
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
-              --body-file /tmp/status.md
-          else
-            gh issue edit "$issue" --repo "$GITHUB_REPOSITORY" \
-              --title "$title" --body-file /tmp/status.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$status_file"
+          if git diff --cached --quiet; then
+            exit 0
           fi
+          git commit -m "status: $RUN_NAME $RUN_CONCLUSION"
+          git push origin HEAD:automation-status
