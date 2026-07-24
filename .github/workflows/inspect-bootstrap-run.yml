@@ -13,52 +13,25 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - name: Wait for and inspect the supported-schema bootstrap run
+      - name: Extract the publication-step failure
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          target_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
-          run_id=""
-          for _ in $(seq 1 60); do
-            run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" \
-              --jq "[.workflow_runs[] | select(.name == \"bootstrap-first-edition\" and .head_sha == \"$target_sha\")] | sort_by(.id) | reverse | .[0].id // empty")
-            if [ -n "$run_id" ]; then break; fi
-            sleep 10
-          done
-          if [ -z "$run_id" ]; then
-            echo "No bootstrap run found for $target_sha." > /tmp/bootstrap.md
-          else
-            for _ in $(seq 1 120); do
-              status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq .status)
-              if [ "$status" = "completed" ]; then break; fi
-              sleep 10
-            done
-            {
-              echo "## Bootstrap run $run_id"
-              echo
-              echo '```text'
-              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
-                --jq '[.id, .status, (.conclusion // "-"), .event, .head_sha, .html_url] | @tsv'
-              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
-                --jq '.jobs[] | [.id, .name, .status, (.conclusion // "-")] | @tsv'
-              echo '```'
-              echo
-              echo '## Article pull requests'
-              echo '```text'
-              gh pr list --repo "$GITHUB_REPOSITORY" --state all \
-                --search 'in:title "nb: the-one/"' --limit 10 \
-                --json number,state,mergedAt,title,url \
-                --jq '.[] | [.number, .state, (.mergedAt // "-"), .title, .url] | @tsv'
-              echo '```'
-              echo
-              echo '## Failed log'
-              echo '```text'
-              gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --log-failed 2>&1 | tail -n 300 || true
-              echo '```'
-            } > /tmp/bootstrap.md
-          fi
+          run_id=30069489060
+          gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --log-failed > /tmp/failed.log 2>&1 || true
+          {
+            echo "## Publication-step failure from run $run_id"
+            echo
+            echo '```text'
+            grep -E -C 5 'error:|fatal:|failed|BLOCK:|WARN:|verdict:|Process completed|pull request|already exists|Resource not accessible|HTTP 4|exit code' /tmp/failed.log | tail -n 120 || true
+            echo '```'
+            echo
+            echo '## Final 80 log lines'
+            echo '```text'
+            tail -n 80 /tmp/failed.log
+            echo '```'
+          } > /tmp/bootstrap.md
           gh pr comment "${{ github.event.pull_request.number }}" \
             --repo "$GITHUB_REPOSITORY" --body-file /tmp/bootstrap.md
