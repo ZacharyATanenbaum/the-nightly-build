@@ -1,13 +1,13 @@
-# This trusted workflow builds the current library and publishes a static branch.
-# A merged article is present; changing this file retriggers the immutable first-edition build.
+# Trusted publisher for the static gh-pages branch.
+# Article generation belongs to the ChatGPT Scheduled Task. This workflow runs
+# only after the repository's independent article validator has completed.
 name: web-publish
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/web-publish.yml
+  workflow_run:
+    workflows: [nightly-build-check]
+    types: [completed]
 
 permissions:
   contents: write
@@ -18,10 +18,15 @@ concurrency:
 
 jobs:
   publish:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout engine and press
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Checkout published library
         uses: actions/checkout@v4
