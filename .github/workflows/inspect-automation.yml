@@ -14,27 +14,20 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect recent workflow runs
+      - name: Inspect recent workflow failures
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           {
-            echo '## Recent workflow runs'
-            echo
-            echo '```text'
-            gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=30" \
-              --jq '.workflow_runs[] | [.id, .name, .event, .status, (.conclusion // "-"), .head_sha, .html_url] | @tsv'
-            echo '```'
-            echo
-            echo '## Recent jobs'
-            echo
-            echo '```text'
-            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=12" --jq '.workflow_runs[].id'); do
-              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" \
-                --jq ".jobs[] | [\"run=$id\", .id, .name, .status, (.conclusion // \"-\")] | @tsv"
+            echo '## Failed unattended workflow logs'
+            for id in 30059523020 30059522964 30059546708; do
+              echo
+              echo "### Run $id"
+              echo '```text'
+              gh run view "$id" --repo "$GITHUB_REPOSITORY" --log-failed 2>&1 | tail -n 160
+              echo '```'
             done
-            echo '```'
           } > /tmp/automation.md
           gh pr comment "${{ github.event.pull_request.number }}" \
             --repo "$GITHUB_REPOSITORY" --body-file /tmp/automation.md
