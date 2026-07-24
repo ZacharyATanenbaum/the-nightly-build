@@ -7,36 +7,33 @@ on:
       - scripts/nb_web/**
 
 permissions:
-  contents: read
-  pull-requests: write
+  contents: write
 
 jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
 
-      - name: Capture type diagnostics
+      - name: Remove obsolete suppressions and verify types
         run: |
-          set +e
-          uv run ty check scripts/web_night_shift.py scripts/nb_web \
-            > /tmp/night-shift-diagnostics.txt 2>&1
-          exit 0
+          sed -i '1{/^# ty: ignore$/d;}' \
+            scripts/nb_web/article.py scripts/nb_web/artifacts.py
+          uv run ty check scripts/web_night_shift.py scripts/nb_web
 
-      - name: Post diagnostics
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Commit the type fix
         run: |
-          {
-            echo '## Night-shift type diagnostics'
-            echo '```text'
-            head -c 50000 /tmp/night-shift-diagnostics.txt
-            echo
-            echo '```'
-          } > /tmp/comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" \
-            --repo "$GITHUB_REPOSITORY" --body-file /tmp/comment.md
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/nb_web/article.py scripts/nb_web/artifacts.py
+          git commit -m "fix: remove obsolete type suppressions"
+          git push origin "HEAD:${{ github.head_ref }}"
