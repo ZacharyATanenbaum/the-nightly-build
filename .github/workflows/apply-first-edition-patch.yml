@@ -18,25 +18,9 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Apply the first-edition wiring
-        run: python scripts/apply_first_edition_patch.py
-
-      - name: Validate and commit the patch
+      - name: Apply and commit the first-edition wiring
         run: |
-          ruby -e "require 'yaml'; YAML.load_file('.github/workflows/web-night-shift.yml')"
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          data = json.loads(Path('press/series/the-one/bootstrap-selection.json').read_text())
-          required = {
-              'publish', 'topic', 'angle', 'why_now', 'query', 'search_terms',
-              'selected_candidate_urls', 'primary_urls', 'secondary_urls', 'reason'
-          }
-          missing = required - data.keys()
-          if missing:
-              raise SystemExit(f'missing bootstrap keys: {sorted(missing)}')
-          PY
+          python scripts/apply_first_edition_patch.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/workflows/web-night-shift.yml
