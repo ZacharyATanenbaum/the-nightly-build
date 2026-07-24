@@ -1,4 +1,3 @@
-# ty: ignore
 """Durable production artifacts for an article PR."""
 
 from __future__ import annotations

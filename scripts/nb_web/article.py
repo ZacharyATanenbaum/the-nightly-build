@@ -1,4 +1,3 @@
-# ty: ignore
 """Structured model output to proof-compatible article HTML."""
 
 from __future__ import annotations
