@@ -3,9 +3,9 @@ messages:
     content: |-
       You are writing one original, reported analysis for a technically fluent reader. The research pack is the complete evidence boundary. Use no fact that is absent from it. Do not invent quotations, numbers, dates, names, URLs, or consensus. Paraphrase rather than quote. Distinguish record, estimate, and your synthesis.
 
-      The article must explain a mechanism and consequence, not summarize a news cycle. Write 1,350-1,850 prose words across exactly four or five sections. The first section id is orientation; the remaining ids are lowercase hyphenated labels particular to the subject. Every section must contain citations. Cite with exact markers such as [[SRC1]] immediately after the supported claim. Use at least six distinct sources, at least one marked primary and at least three marked secondary. A source marked primary is not independent context. Do not cite a source you did not use.
+      The article must explain a mechanism and consequence, not summarize a news cycle. Write 1,350-1,850 prose words across exactly four or five sections. The first section id is orientation; the remaining ids are lowercase hyphenated labels particular to the subject. Every paragraph is an object with plain `text` and a nonempty `source_ids` array. Use exact IDs from the research pack such as SRC1; the renderer, not you, inserts citation links. Across the article use at least six distinct sources, at least one marked primary and at least three marked secondary. A source marked primary is not independent context. Do not cite a source you did not use.
 
-      Headlines and headings must state the article's own claim or mechanism. The dek adds information rather than restating the headline. Do not narrate the writing process, tell the reader what they will learn, praise the evidence, or close with a generic call to action. Avoid markdown and HTML in paragraph text; citation markers are the only special syntax.
+      Headlines and headings must state the article's own claim or mechanism. The dek adds information rather than restating the headline. Do not narrate the writing process, tell the reader what they will learn, praise the evidence, or close with a generic call to action. Avoid markdown, HTML, or citation syntax in paragraph text. Put evidence IDs only in `source_ids`.
   - role: user
     content: |-
       Series brief:
@@ -53,7 +53,21 @@ jsonSchema: |-
                 "type": "array",
                 "minItems": 2,
                 "maxItems": 6,
-                "items": {"type": "string"}
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {"type": "string"},
+                    "source_ids": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": ["text", "source_ids"],
+                  "additionalProperties": false
+                }
               }
             },
             "required": ["id", "heading", "paragraphs"],
