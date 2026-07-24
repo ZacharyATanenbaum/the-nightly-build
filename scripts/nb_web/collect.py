@@ -13,6 +13,7 @@ from typing import Any
 
 import feedparser
 
+from nb_web.cluster import build_commissioning_clusters
 from nb_web.common import (
     ROOT,
     WORK,
@@ -26,6 +27,13 @@ from nb_web.common import (
     strip_markup,
     utc_now,
     write_output,
+)
+from nb_web.research import search_bing, search_gdelt, search_google_news
+
+BROAD_QUERIES = (
+    "artificial intelligence",
+    "AI model release",
+    "AI regulation software",
 )
 
 FEEDS: tuple[tuple[str, str, str], ...] = (
@@ -139,30 +147,15 @@ def recent_library(library: pathlib.Path) -> list[dict[str, Any]]:
     return rows[:30]
 
 
-def prompt_candidates(ordered: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return a small, source-balanced commissioning view.
+def collect_search(query: str) -> tuple[list[dict[str, Any]], str | None]:
+    rows: list[dict[str, Any]] = []
+    for search in (search_gdelt, search_bing, search_google_news):
+        rows.extend(search(query))
+    return rows, None
 
-    GitHub Models enforces request-size limits below several models' nominal
-    context windows. The full candidate record stays on disk for targeted
-    research; the commissioning model sees only enough evidence to select a
-    beat and exact starting URLs.
-    """
-    selected: list[dict[str, Any]] = []
-    for kind in ("primary", "secondary"):
-        selected.extend(row for row in ordered if row.get("kind_hint") == kind)
-        selected = selected[: 8 if kind == "primary" else 16]
-    selected.sort(key=lambda row: row.get("published_iso") or "", reverse=True)
-    return [
-        {
-            "title": str(row.get("title") or "")[:180],
-            "url": row["url"],
-            "summary": str(row.get("summary") or "")[:180],
-            "published": row.get("published_iso"),
-            "source_name": row.get("source_name"),
-            "kind_hint": row.get("kind_hint"),
-        }
-        for row in selected[:16]
-    ]
+
+def prompt_candidates(ordered: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return build_commissioning_clusters(ordered)
 
 
 def prepare(library_arg: str) -> int:
@@ -192,6 +185,7 @@ def prepare(library_arg: str) -> int:
     errors: list[str] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         futures = [pool.submit(collect_feed, *feed) for feed in FEEDS]
+        futures.extend(pool.submit(collect_search, query) for query in BROAD_QUERIES)
         for future in concurrent.futures.as_completed(futures):
             items, error = future.result()
             candidates.extend(items)
@@ -221,11 +215,12 @@ def prepare(library_arg: str) -> int:
         reverse=True,
     )[:140]
     recent = recent_library(library)
+    commissioning = prompt_candidates(ordered)
     (WORK / "candidates-full.json").write_text(
         json.dumps(ordered, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     (WORK / "candidates.json").write_text(
-        json.dumps(prompt_candidates(ordered), indent=2, ensure_ascii=False),
+        json.dumps(commissioning, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
     (WORK / "recent-full.json").write_text(
@@ -250,11 +245,13 @@ def prepare(library_arg: str) -> int:
 
     primary = sum(item["kind_hint"] == "primary" for item in ordered)
     secondary = sum(item["kind_hint"] == "secondary" for item in ordered)
-    ready = len(ordered) >= 12 and primary >= 2 and secondary >= 4
+    ready = (
+        len(ordered) >= 12 and primary >= 2 and secondary >= 4 and bool(commissioning)
+    )
     write_output("due", "true" if ready else "false")
     write_output(
         "reason",
-        f"collected {len(ordered)} candidates ({primary} primary, {secondary} secondary)",
+        f"collected {len(ordered)} candidates ({primary} primary, {secondary} secondary) and {len(commissioning)} source-diverse clusters",
     )
     if not ready:
         print(
