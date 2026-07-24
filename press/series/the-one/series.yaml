@@ -9,6 +9,6 @@ bands:
   words: [1200, 2200]
 min_sources: 6
 sources_by_kind:
-  primary: [2, null]
-  secondary: [2, null]
+  primary: [1, null]
+  secondary: [3, null]
 cadence: daily

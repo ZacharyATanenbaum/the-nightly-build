@@ -1,4 +1,3 @@
-# ty: ignore
 """Shared primitives for the repository-native night shift."""
 
 from __future__ import annotations
@@ -27,10 +26,39 @@ TIMEOUT = (10, 30)
 MAX_DOWNLOAD = 4 * 1024 * 1024
 CITATION_RE = re.compile(r"\[\[([A-Za-z0-9_-]+)\]\]")
 SAFE_ID_RE = re.compile(r"[^a-z0-9-]+")
+
+# Search and news aggregators never own the claims behind the links they carry.
+# This check runs before a caller-provided hint so stale metadata cannot turn an
+# aggregator URL into a primary source.
+AGGREGATOR_HOSTS = frozenset(
+    {
+        "bing.com",
+        "www.bing.com",
+        "google.com",
+        "www.google.com",
+        "news.google.com",
+    }
+)
+
+# Google spans several unrelated products and aggregators, so list its known
+# owner-authored surfaces explicitly instead of treating every *.google.com URL
+# as primary. The suffix list is reserved for organizations whose whole domain
+# is an owner-authored surface in this paper's beats.
+PRIMARY_EXACT_HOSTS = frozenset(
+    {
+        "about.google",
+        "ai.google",
+        "blog.google",
+        "cloud.google.com",
+        "developers.google.com",
+        "developers.googleblog.com",
+        "research.google",
+        "security.googleblog.com",
+    }
+)
 PRIMARY_HOST_SUFFIXES = (
     "openai.com",
     "anthropic.com",
-    "google.com",
     "deepmind.google",
     "microsoft.com",
     "meta.com",
@@ -145,9 +173,20 @@ def host_for(url: str) -> str:
 
 
 def primary_hint(url: str, fallback: str | None = None) -> str:
+    """Return a conservative ownership label for a source URL.
+
+    A primary source owns the underlying claim. Search aggregators are always
+    secondary even when a caller accidentally carries a primary hint forward.
+    An explicit hint otherwise wins because official feeds know their publisher
+    even when a page redirects through a CDN.
+    """
     host = host_for(url)
+    if host in AGGREGATOR_HOSTS:
+        return "secondary"
     if fallback in {"primary", "secondary"}:
         return fallback
+    if host in PRIMARY_EXACT_HOSTS:
+        return "primary"
     if any(
         host == suffix or host.endswith(f".{suffix}")
         for suffix in PRIMARY_HOST_SUFFIXES
