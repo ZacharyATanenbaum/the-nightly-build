@@ -13,6 +13,7 @@ from typing import Any
 
 import feedparser
 
+from nb_web.cluster import build_commissioning_clusters
 from nb_web.common import (
     ROOT,
     WORK,
@@ -27,7 +28,6 @@ from nb_web.common import (
     utc_now,
     write_output,
 )
-from nb_web.cluster import build_commissioning_clusters
 from nb_web.research import search_bing, search_gdelt, search_google_news
 
 BROAD_QUERIES = (
