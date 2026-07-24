@@ -144,23 +144,45 @@ def clean_title(value: str) -> str:
 
 
 def normalize_url(value: str) -> str | None:
+    """Return a canonical, publishable HTTPS source URL.
+
+    News RSS feeds often wrap the publisher URL in an aggregator redirect. The
+    wrapper is not the source and can also be emitted as plain HTTP, which the
+    article proof correctly rejects. Unwrap known Bing News redirects first,
+    then strip tracking parameters and upgrade the surviving URL to HTTPS.
+    Retrieval later proves whether that canonical URL actually resolves.
+    """
     if not value:
         return None
     value = html.unescape(value.strip())
     parsed = urllib.parse.urlsplit(value)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None
+
     query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    host = (parsed.hostname or "").lower()
+    if host in {"bing.com", "www.bing.com"} and parsed.path.lower().endswith(
+        "/news/apiclick.aspx"
+    ):
+        target = next(
+            (item for key, item in query if key.lower() == "url" and item), None
+        )
+        if target and target != value:
+            return normalize_url(target)
+
     query = [
         (key, item)
         for key, item in query
         if not key.lower().startswith("utm_")
         and key.lower() not in {"gclid", "fbclid", "mc_cid", "mc_eid"}
     ]
+    netloc = parsed.netloc.lower()
+    if parsed.port in {80, 443}:
+        netloc = host
     return urllib.parse.urlunsplit(
         (
-            parsed.scheme,
-            parsed.netloc.lower(),
+            "https",
+            netloc,
             parsed.path or "/",
             urllib.parse.urlencode(query),
             "",
