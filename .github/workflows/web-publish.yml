@@ -1,3 +1,4 @@
+# This trusted workflow publishes the current library and reports through web-run-status.
 name: web-publish
 
 on:

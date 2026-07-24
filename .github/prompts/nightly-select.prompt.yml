@@ -1,3 +1,4 @@
+# Changes to this repository-owned prompt intentionally retrigger the night shift.
 messages:
   - role: system
     content: |-
