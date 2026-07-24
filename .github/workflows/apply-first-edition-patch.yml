@@ -1,0 +1,47 @@
+name: apply-first-edition-patch
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/apply-first-edition-patch.yml
+      - scripts/apply_first_edition_patch.py
+      - press/series/the-one/bootstrap-selection.json
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Apply the first-edition wiring
+        run: python scripts/apply_first_edition_patch.py
+
+      - name: Validate and commit the patch
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+
+          yaml.safe_load(Path('.github/workflows/web-night-shift.yml').read_text())
+          data = json.loads(Path('press/series/the-one/bootstrap-selection.json').read_text())
+          required = {
+              'publish', 'topic', 'angle', 'why_now', 'query', 'search_terms',
+              'selected_candidate_urls', 'primary_urls', 'secondary_urls', 'reason'
+          }
+          missing = required - data.keys()
+          if missing:
+              raise SystemExit(f'missing bootstrap keys: {sorted(missing)}')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/web-night-shift.yml
+          git add press/series/the-one/bootstrap-selection.json
+          git add -A scripts/apply_first_edition_patch.py
+          git commit -m "feat: bootstrap the first automated edition"
+          git push origin "HEAD:${{ github.head_ref }}"
