@@ -149,9 +149,7 @@ def prompt_candidates(ordered: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     selected: list[dict[str, Any]] = []
     for kind in ("primary", "secondary"):
-        selected.extend(
-            row for row in ordered if row.get("kind_hint") == kind
-        )
+        selected.extend(row for row in ordered if row.get("kind_hint") == kind)
         selected = selected[: 8 if kind == "primary" else 16]
     selected.sort(key=lambda row: row.get("published_iso") or "", reverse=True)
     return [
