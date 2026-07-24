@@ -33,6 +33,9 @@ from nb_web.common import (
 
 MAX_SOURCE_TEXT = 7_500
 MAX_RESEARCH_SOURCES = 14
+MAX_PROMPT_SOURCES = 10
+MAX_PROMPT_SOURCE_TEXT = 700
+MAX_RESEARCH_PACK_CHARS = 18_000
 
 
 def search_gdelt(query: str) -> list[dict[str, Any]]:
@@ -279,6 +282,53 @@ def _balance(fetched: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return balanced
 
 
+def build_research_pack(
+    selection: dict[str, Any],
+    rows: list[dict[str, Any]],
+    *,
+    text_limit: int | None = None,
+    source_limit: int | None = None,
+) -> str:
+    """Serialize evidence for either the model or the durable audit record.
+
+    The model-facing pack is deliberately bounded below GitHub Models' request
+    limit. The complete fetched text remains in ``sources.json`` and in the
+    separate durable research record, so reducing prompt size never erases the
+    machine-auditable evidence.
+    """
+    lines = [
+        f"# Research pack: {selection.get('topic', '')}",
+        "",
+        f"Angle: {selection.get('angle', '')}",
+        f"Why now: {selection.get('why_now', selection.get('reason', ''))}",
+        "",
+        "Use only the sources below. Kind labels are provisional but conservative: a source is primary only when it owns the underlying claim.",
+        "",
+    ]
+    selected = rows if source_limit is None else rows[:source_limit]
+    for row in selected:
+        text = str(row["text"])
+        if text_limit is not None and len(text) > text_limit:
+            excerpt = text[:text_limit].rsplit(" ", 1)[0].rstrip()
+            text = (
+                excerpt
+                + "\n[Excerpt truncated for model context; do not infer omitted content.]"
+            )
+        lines.extend(
+            [
+                f"## {row['id']} — {row['title']}",
+                f"Kind hint: {row['kind_hint']}",
+                f"Publisher/domain: {row.get('source_name') or row['domain']} / {row['domain']}",
+                f"URL: {row['url']}",
+                f"Published: {row.get('published') or 'unknown'}",
+                "",
+                text,
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
 def research(selection_path: str) -> int:
     ensure_work()
     selection = parse_action_json(pathlib.Path(selection_path))
@@ -377,35 +427,27 @@ def research(selection_path: str) -> int:
     secondary_count = sum(row["kind_hint"] == "secondary" for row in balanced)
     ready = len(balanced) >= 8 and primary_count >= 1 and secondary_count >= 5
 
-    lines = [
-        f"# Research pack: {selection.get('topic', '')}",
-        "",
-        f"Angle: {selection.get('angle', '')}",
-        f"Why now: {selection.get('why_now', selection.get('reason', ''))}",
-        "",
-        "Use only the sources below. Kind labels are provisional but conservative: a source is primary only when it owns the underlying claim.",
-        "",
-    ]
-    for row in balanced:
-        lines.extend(
-            [
-                f"## {row['id']} — {row['title']}",
-                f"Kind hint: {row['kind_hint']}",
-                f"Publisher/domain: {row.get('source_name') or row['domain']} / {row['domain']}",
-                f"URL: {row['url']}",
-                f"Published: {row.get('published') or 'unknown'}",
-                "",
-                row["text"],
-                "",
-            ]
+    full_pack = build_research_pack(selection, balanced)
+    prompt_pack = build_research_pack(
+        selection,
+        balanced,
+        text_limit=MAX_PROMPT_SOURCE_TEXT,
+        source_limit=MAX_PROMPT_SOURCES,
+    )
+    if len(prompt_pack) > MAX_RESEARCH_PACK_CHARS:
+        raise ValueError(
+            f"model research pack is {len(prompt_pack)} characters; "
+            f"limit is {MAX_RESEARCH_PACK_CHARS}"
         )
+
     (WORK / "sources.json").write_text(
         json.dumps(balanced, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     (WORK / "fetch-failures.json").write_text(
         json.dumps(failures, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    (WORK / "research-pack.md").write_text("\n".join(lines), encoding="utf-8")
+    (WORK / "research-record.md").write_text(full_pack, encoding="utf-8")
+    (WORK / "research-pack.md").write_text(prompt_pack, encoding="utf-8")
     write_output("ready", "true" if ready else "false")
     write_output(
         "reason",
