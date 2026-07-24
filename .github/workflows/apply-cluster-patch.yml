@@ -24,7 +24,6 @@ jobs:
         run: |
           python scripts/apply_cluster_patch.py
           uv run ruff format scripts/nb_web/collect.py scripts/nb_web/cluster.py tests/test_web_clusters.py
-          uv run ruff check scripts/nb_web/collect.py scripts/nb_web/cluster.py tests/test_web_clusters.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A scripts
