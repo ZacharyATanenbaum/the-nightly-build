@@ -44,7 +44,7 @@ def _weighted_vectors(rows: list[dict[str, Any]]) -> list[dict[str, float]]:
     term_counts = [_terms(row) for row in rows]
     document_frequency: Counter[str] = Counter()
     for counts in term_counts:
-        document_frequency.update(counts)
+        document_frequency.update(counts.keys())
     total = max(1, len(rows))
     vectors: list[dict[str, float]] = []
     for counts in term_counts:
@@ -68,12 +68,13 @@ def _cosine(left: dict[str, float], right: dict[str, float]) -> float:
     return numerator / (left_norm * right_norm)
 
 
-def _match(
-    seed: dict[str, float], candidate: dict[str, float], *, kind: str
-) -> float:
+def _match(seed: dict[str, float], candidate: dict[str, float], *, kind: str) -> float:
     similarity = _cosine(seed, candidate)
     shared = seed.keys() & candidate.keys()
-    rare_anchor = any(len(term) >= 5 and ("-" in term or any(ch.isdigit() for ch in term)) for term in shared)
+    rare_anchor = any(
+        len(term) >= 5 and ("-" in term or any(ch.isdigit() for ch in term))
+        for term in shared
+    )
     threshold = 0.13 if kind == "secondary" else 0.16
     if similarity >= threshold or (rare_anchor and similarity >= 0.07):
         return similarity
@@ -108,7 +109,9 @@ def build_commissioning_clusters(
             if index == seed_index:
                 continue
             score = _match(
-                vectors[seed_index], vectors[index], kind=str(row.get("kind_hint") or "")
+                vectors[seed_index],
+                vectors[index],
+                kind=str(row.get("kind_hint") or ""),
             )
             if score:
                 matches.append((index, score))
@@ -126,14 +129,25 @@ def build_commissioning_clusters(
                     continue
                 chosen.append((index, score))
                 domain_counts[domain] += 1
-                if sum(rows[item[0]].get("kind_hint") == wanted_kind for item in chosen) >= cap:
+                if (
+                    sum(
+                        rows[item[0]].get("kind_hint") == wanted_kind for item in chosen
+                    )
+                    >= cap
+                ):
                     break
 
-        primary_count = sum(rows[index].get("kind_hint") == "primary" for index, _ in chosen)
-        secondary_count = sum(rows[index].get("kind_hint") == "secondary" for index, _ in chosen)
+        primary_count = sum(
+            rows[index].get("kind_hint") == "primary" for index, _ in chosen
+        )
+        secondary_count = sum(
+            rows[index].get("kind_hint") == "secondary" for index, _ in chosen
+        )
         if primary_count < 1 or secondary_count < 2:
             continue
-        distinct_domains = len({_domain(str(rows[index]["url"])) for index, _ in chosen})
+        distinct_domains = len(
+            {_domain(str(rows[index]["url"])) for index, _ in chosen}
+        )
         average_match = sum(score for _, score in chosen[1:]) / max(1, len(chosen) - 1)
         cluster_score = (
             min(primary_count, 2) * 10
@@ -169,9 +183,15 @@ def build_commissioning_clusters(
             {
                 "cluster_id": f"cluster-{len(clusters) + 1}",
                 "topic_anchor": sources[0]["title"],
-                "primary_count": sum(source["kind_hint"] == "primary" for source in sources),
-                "secondary_count": sum(source["kind_hint"] == "secondary" for source in sources),
-                "distinct_domains": len({_domain(str(source["url"])) for source in sources}),
+                "primary_count": sum(
+                    source["kind_hint"] == "primary" for source in sources
+                ),
+                "secondary_count": sum(
+                    source["kind_hint"] == "secondary" for source in sources
+                ),
+                "distinct_domains": len(
+                    {_domain(str(source["url"])) for source in sources}
+                ),
                 "cluster_score": round(score, 2),
                 "sources": sources,
             }
