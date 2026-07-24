@@ -1,0 +1,268 @@
+name: web-night-shift
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/web-night-shift.yml
+      - .github/prompts/nightly-select.prompt.yml
+      - .github/prompts/nightly-write.prompt.yml
+      - .github/prompts/nightly-revise.prompt.yml
+      - scripts/web_night_shift.py
+      - scripts/nb_web/**
+
+permissions:
+  actions: write
+  contents: write
+  models: read
+  pull-requests: write
+
+concurrency:
+  group: web-night-shift
+  cancel-in-progress: false
+
+jobs:
+  night-shift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout published library
+        uses: actions/checkout@v4
+        with:
+          ref: library
+          path: library-checkout
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Resume a previously proven PR
+        id: resume
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --base library --state open \
+            --search 'in:title "nb: the-one/"' --json number \
+            --jq 'sort_by(.number) | .[0].number // empty')
+          if [ -z "$pr" ]; then
+            echo "stop=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          head=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)
+          proof=$(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]") | .body | select(contains("verdict: PUBLISHABLE"))] | last // ""')
+          if [[ "$head" != nb/the-one-* ]] || [ -z "$proof" ]; then
+            echo "Open article PR #$pr lacks a bot-authored publishable proof; refusing to merge or commission another." >&2
+            exit 1
+          fi
+
+          merged=false
+          for attempt in 1 2 3 4 5; do
+            if gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --squash --delete-branch; then
+              merged=true
+              break
+            fi
+            sleep $((attempt * 8))
+          done
+          if [ "$merged" != true ]; then
+            echo "Existing proven article PR #$pr could not be merged; no second article will be commissioned." >&2
+            exit 1
+          fi
+          gh workflow run web-publish.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "stop=true" >> "$GITHUB_OUTPUT"
+          echo "Resumed and merged article PR #$pr." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compute duty and collect candidates
+        id: prepare
+        if: steps.resume.outputs.stop != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run scripts/web_night_shift.py prepare --library library-checkout
+
+      - name: Record an idle night
+        if: steps.resume.outputs.stop != 'true' && steps.prepare.outputs.due != 'true'
+        run: |
+          echo "No article was commissioned: ${{ steps.prepare.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Select the night's subject
+        id: select
+        if: steps.prepare.outputs.due == 'true'
+        uses: actions/ai-inference@v2
+        with:
+          prompt-file: .github/prompts/nightly-select.prompt.yml
+          file_input: |
+            candidates: .nb-web/candidates.json
+            recent: .nb-web/recent.json
+
+      - name: Fetch and prove the source pack
+        id: research
+        if: steps.prepare.outputs.due == 'true'
+        run: >-
+          uv run scripts/web_night_shift.py research
+          --selection "${{ steps.select.outputs.response-file }}"
+
+      - name: Record a source-thin night
+        if: steps.prepare.outputs.due == 'true' && steps.research.outputs.ready != 'true'
+        run: |
+          echo "No article was commissioned: ${{ steps.research.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Draft the article
+        id: draft
+        if: steps.research.outputs.ready == 'true'
+        uses: actions/ai-inference@v2
+        with:
+          prompt-file: .github/prompts/nightly-write.prompt.yml
+          file_input: |
+            research_pack: .nb-web/research-pack.md
+            series_prompt: press/series/the-one/prompt.md
+            editorial_voice: press/editorial.md
+
+      - name: Render the first draft
+        id: first-render
+        if: steps.research.outputs.ready == 'true'
+        run: |
+          set +e
+          uv run scripts/web_night_shift.py render --draft "${{ steps.draft.outputs.response-file }}"
+          code=$?
+          if [ "$code" -eq 0 ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+          exit 0
+
+      - name: Run the first proof
+        id: first-proof
+        if: steps.first-render.outputs.ok == 'true'
+        run: |
+          set +e
+          uv run engine/check.py .nb-web/article.html --series the-one \
+            --repo . --library library-checkout > .nb-web/proof-first.txt 2>&1
+          code=$?
+          cat .nb-web/proof-first.txt
+          if [ "$code" -eq 0 ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+          exit 0
+
+      - name: Decide whether the bounded retry is needed
+        id: retry
+        if: steps.research.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.first-render.outputs.ok }}" = true ] && [ "${{ steps.first-proof.outputs.ok }}" = true ]; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            cat .nb-web/render-errors.txt 2>/dev/null || true
+            cat .nb-web/proof-first.txt 2>/dev/null || true
+          } > .nb-web/failures.txt
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Revise once from machine findings
+        id: revise
+        if: steps.retry.outputs.needed == 'true'
+        uses: actions/ai-inference@v2
+        with:
+          prompt-file: .github/prompts/nightly-revise.prompt.yml
+          file_input: |
+            failures: .nb-web/failures.txt
+            previous_draft: .nb-web/draft.json
+            research_pack: .nb-web/research-pack.md
+
+      - name: Render the revision
+        if: steps.retry.outputs.needed == 'true'
+        run: uv run scripts/web_night_shift.py render --draft "${{ steps.revise.outputs.response-file }}"
+
+      - name: Run the final proof
+        if: steps.research.outputs.ready == 'true'
+        run: |
+          uv run engine/check.py .nb-web/article.html --series the-one \
+            --repo . --library library-checkout | tee .nb-web/proof-final.txt
+          {
+            echo
+            echo "## Final proof"
+            echo
+            echo '```text'
+            cat .nb-web/proof-final.txt
+            echo '```'
+          } >> .nb-web/artifacts/requested-changes.md
+
+      - name: Open, merge, and publish the article PR
+        if: steps.research.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          slug=$(cat .nb-web/slug.txt)
+          title=$(cat .nb-web/title.txt)
+          branch="nb/the-one-${slug}-${GITHUB_RUN_ID}"
+          worktree="$RUNNER_TEMP/article-worktree"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C library-checkout fetch origin library
+          git -C library-checkout worktree add "$worktree" -b "$branch" origin/library
+          mkdir -p "$worktree/library/the-one"
+          cp .nb-web/article.html "$worktree/library/the-one/$slug.html"
+          git -C "$worktree" add "library/the-one/$slug.html"
+          git -C "$worktree" commit -m "nb: the-one/$slug"
+
+          uv run engine/build_record.py "$worktree/library/the-one/$slug.html" \
+            --work .nb-web/artifacts --out .nb-web/pr-body.md \
+            --comment-out .nb-web/pr-comment.md
+
+          uv run engine/check.py --pr --repo "$worktree" --main "$GITHUB_WORKSPACE" \
+            --base origin/library --head HEAD --library "$GITHUB_WORKSPACE/library-checkout" \
+            --pr-body .nb-web/pr-body.md | tee .nb-web/proof-pr.txt
+
+          git -C "$worktree" push -u origin "$branch"
+          pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base library --head "$branch" \
+            --title "nb: the-one/$slug - $title" --body-file .nb-web/pr-body.md)
+          if [ -s .nb-web/pr-comment.md ]; then
+            gh pr comment "$pr_url" --repo "$GITHUB_REPOSITORY" --body-file .nb-web/pr-comment.md
+          fi
+          {
+            echo '## The editor'
+            echo '```text'
+            cat .nb-web/proof-pr.txt
+            echo '```'
+          } > .nb-web/editor-comment.md
+          gh pr comment "$pr_url" --repo "$GITHUB_REPOSITORY" --body-file .nb-web/editor-comment.md
+
+          merged=false
+          for attempt in 1 2 3 4 5; do
+            if gh pr merge "$pr_url" --repo "$GITHUB_REPOSITORY" --squash --delete-branch; then
+              merged=true
+              break
+            fi
+            sleep $((attempt * 8))
+          done
+          if [ "$merged" != true ]; then
+            echo "Article PR remains open after five merge attempts: $pr_url" >&2
+            exit 1
+          fi
+
+          gh workflow run web-publish.yml --repo "$GITHUB_REPOSITORY" --ref main
+          site_url="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          {
+            echo "Article PR: $pr_url"
+            echo
+            echo "Published site: $site_url"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-night-shift-${{ github.run_id }}
+          path: .nb-web
+          if-no-files-found: ignore
+          retention-days: 7
