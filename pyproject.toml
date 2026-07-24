@@ -10,11 +10,16 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14",
-    "ty>=0.0.1a1",
+    "beautifulsoup4>=4.12",
+    "feedparser>=6.0",
     "pre-commit>=4.0",
-    "websocket-client>=1.9.0",
+    "pypdf>=5.0",
     "pytest>=9.1.1",
+    "requests>=2.32",
+    "ruff>=0.14",
+    "trafilatura>=2.0",
+    "ty>=0.0.1a1",
+    "websocket-client>=1.9.0",
 ]
 figure-capture = [
     "pillow>=12.3.0",
