@@ -14,6 +14,26 @@ from nb_web.artifacts import build_artifacts
 from nb_web.common import CITATION_RE, ROOT, WORK, parse_action_json, slugify, utc_now
 
 
+def _paragraph_text(paragraph: object) -> str:
+    if isinstance(paragraph, dict):
+        return str(paragraph.get("text") or "")
+    return str(paragraph)
+
+
+def _paragraph_sources(paragraph: object) -> list[str]:
+    if isinstance(paragraph, dict):
+        raw = paragraph.get("source_ids")
+        if not isinstance(raw, list):
+            return []
+        markers: list[str] = []
+        for value in raw:
+            marker = str(value).strip().upper()
+            if marker and marker not in markers:
+                markers.append(marker)
+        return markers
+    return [marker.upper() for marker in CITATION_RE.findall(str(paragraph))]
+
+
 def _sentence_html(text: str, source_map: dict[str, int]) -> str:
     markers: list[str] = []
 
@@ -27,6 +47,18 @@ def _sentence_html(text: str, source_map: dict[str, int]) -> str:
         citation = f'<sup class="nb-cite"><a href="#s{number}">{number}</a></sup>'
         escaped = escaped.replace(f"@@CITE{index}@@", citation)
     return escaped
+
+
+def _paragraph_html(paragraph: object, source_map: dict[str, int]) -> str:
+    if not isinstance(paragraph, dict):
+        return _sentence_html(str(paragraph), source_map)
+    escaped = html.escape(_paragraph_text(paragraph), quote=False)
+    citations = "".join(
+        f'<sup class="nb-cite"><a href="#s{source_map[marker]}">'
+        f"{source_map[marker]}</a></sup>"
+        for marker in _paragraph_sources(paragraph)
+    )
+    return escaped + citations
 
 
 def _draft_errors(draft: dict[str, Any], sources: list[dict[str, Any]]) -> list[str]:
@@ -62,11 +94,18 @@ def _draft_errors(draft: dict[str, Any], sources: list[dict[str, Any]]) -> list[
         if not isinstance(paragraphs, list) or not paragraphs:
             errors.append(f"section {section.get('id')} has no paragraphs")
             continue
-        section_cites = []
-        for paragraph in paragraphs:
-            section_cites.extend(
-                marker.upper() for marker in CITATION_RE.findall(str(paragraph))
-            )
+        section_cites: list[str] = []
+        for paragraph_index, paragraph in enumerate(paragraphs, 1):
+            if isinstance(paragraph, dict) and not _paragraph_text(paragraph).strip():
+                errors.append(
+                    f"section {section.get('id')} paragraph {paragraph_index} has no text"
+                )
+            paragraph_cites = _paragraph_sources(paragraph)
+            if isinstance(paragraph, dict) and not paragraph_cites:
+                errors.append(
+                    f"section {section.get('id')} paragraph {paragraph_index} has no source_ids"
+                )
+            section_cites.extend(paragraph_cites)
         if not section_cites:
             errors.append(f"section {section.get('id')} has no citations")
         cited.extend(section_cites)
@@ -101,8 +140,7 @@ def _render_article(
     cited_order: list[str] = []
     for section in draft["sections"]:
         for paragraph in section["paragraphs"]:
-            for marker in CITATION_RE.findall(str(paragraph)):
-                marker = marker.upper()
+            for marker in _paragraph_sources(paragraph):
                 if marker not in cited_order:
                     cited_order.append(marker)
     source_map = {marker: index for index, marker in enumerate(cited_order, 1)}
@@ -119,7 +157,7 @@ def _render_article(
         section_id = slugify(str(section["id"]))
         heading = html.escape(" ".join(str(section["heading"]).split()))
         paragraphs = "\n".join(
-            f"        <p>{_sentence_html(str(paragraph), source_map)}</p>"
+            f"        <p>{_paragraph_html(paragraph, source_map)}</p>"
             for paragraph in section["paragraphs"]
         )
         section_html.append(
