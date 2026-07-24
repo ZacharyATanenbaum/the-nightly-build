@@ -17,24 +17,24 @@ def build_artifacts(
 ) -> None:
     artifact_dir = WORK / "artifacts"
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    task = f"""# Commission: The One / {meta['slug']}
+    task = f"""# Commission: The One / {meta["slug"]}
 
 ## Subject and angle
-{selection.get('topic', meta['title'])}
+{selection.get("topic", meta["title"])}
 
-{selection.get('angle', '')}
+{selection.get("angle", "")}
 
 ## Duty
-The deterministic duty oracle reported `the-one` due for {meta['date']}. This run serves that series exactly once.
+The deterministic duty oracle reported `the-one` due for {meta["date"]}. This run serves that series exactly once.
 
 ## Source policy
 At least six cited sources, including at least two primary sources and two independent secondary sources. No quotations unless the exact words appear in the research pack.
 
 ## Output
-`library/the-one/{meta['slug']}.html`, article template, 1,200–2,200 words.
+`library/the-one/{meta["slug"]}.html`, article template, 1,200–2,200 words.
 
 ## The one thing this piece must do
-{draft.get('thesis') or selection.get('why_now') or 'Explain the mechanism and consequence without outrunning the evidence.'}
+{draft.get("thesis") or selection.get("why_now") or "Explain the mechanism and consequence without outrunning the evidence."}
 """
     process = f"""# Automated editorial record
 
@@ -42,9 +42,9 @@ Production: single-context, no role isolation. The GitHub Models harness used a 
 
 The renderer, not the model, owned article geometry, source ordering, metadata counts, and the permitted write path. The model could propose prose and citations only from the fetched research pack. No executable model output was run.
 
-Final article metadata: {meta['words']} words, {meta['sources']} cited sources, {meta['reading_minutes']} minutes.
+Final article metadata: {meta["words"]} words, {meta["sources"]} cited sources, {meta["reading_minutes"]} minutes.
 """
-    voice = f"""# Voice brief: {meta['title']}
+    voice = f"""# Voice brief: {meta["title"]}
 
 Write for a technically fluent reader who wants the mechanism before the reaction. Specific nouns carry the prose; claims are calibrated as reported fact, estimate, or synthesis. Use one controlled long sentence only when it holds a causal chain, then land the implication plainly. Do not praise sources, narrate the writing process, or announce what the reader will learn.
 
@@ -63,7 +63,7 @@ Source: https://www.theatlantic.com/magazine/archive/1945/07/as-we-may-think/303
 
 Study the progression from present constraint to enabling mechanism to institutional consequence. Keep the confidence proportional to what the record supports.
 
-Article-specific emphasis: {selection.get('angle', '')}
+Article-specific emphasis: {selection.get("angle", "")}
 """
 
     source_notes = {

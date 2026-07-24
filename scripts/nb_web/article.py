@@ -30,9 +30,7 @@ def _sentence_html(text: str, source_map: dict[str, int]) -> str:
     return escaped
 
 
-def _draft_errors(
-    draft: dict[str, Any], sources: list[dict[str, Any]]
-) -> list[str]:
+def _draft_errors(draft: dict[str, Any], sources: list[dict[str, Any]]) -> list[str]:
     errors: list[str] = []
     if not draft.get("publish", True):
         errors.append("draft declined publication")
@@ -113,9 +111,7 @@ def _render_article(
     dek = " ".join(str(draft["dek"]).split())
     slug = slugify(str(draft.get("slug") or title))
     date = utc_now().date().isoformat()
-    tags = [slugify(str(tag)) for tag in draft.get("tags", []) if slugify(str(tag))][
-        :8
-    ]
+    tags = [slugify(str(tag)) for tag in draft.get("tags", []) if slugify(str(tag))][:8]
 
     section_html = []
     for section in draft["sections"]:
@@ -167,7 +163,7 @@ def _render_article(
             .replace("&", "\\u0026")
         )
         meta_json = "\n".join("      " + line for line in serialized.splitlines())
-        return f'''<!doctype html>
+        return f"""<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -191,7 +187,7 @@ def _render_article(
         <div class="nb-eyebrow">The One · Tonight's Read</div>
         <h1 class="nb-title">{html.escape(title)}</h1>
         <p class="nb-dekline">{html.escape(dek)}</p>
-        <div class="nb-byline"><span>{meta_value['reading_minutes']} min read</span><span>{date}</span></div>
+        <div class="nb-byline"><span>{meta_value["reading_minutes"]} min read</span><span>{date}</span></div>
       </header>
 
 {chr(10).join(section_html)}
@@ -205,7 +201,7 @@ def _render_article(
     </article>
   </body>
 </html>
-'''
+"""
 
     sys.path.insert(0, str(ROOT / "engine"))
     from nb.article import Article

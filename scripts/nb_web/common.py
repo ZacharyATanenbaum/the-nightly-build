@@ -70,8 +70,7 @@ def run(*args: str, cwd: pathlib.Path | None = None, check: bool = True) -> str:
         args,
         cwd=str(cwd or ROOT),
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         timeout=180,
     )
     if check and done.returncode != 0:

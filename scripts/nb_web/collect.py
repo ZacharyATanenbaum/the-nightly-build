@@ -212,5 +212,8 @@ def prepare(library_arg: str) -> int:
         f"collected {len(ordered)} candidates ({primary} primary, {secondary} secondary)",
     )
     if not ready:
-        print("insufficient candidate source diversity; publishing nothing", file=sys.stderr)
+        print(
+            "insufficient candidate source diversity; publishing nothing",
+            file=sys.stderr,
+        )
     return 0

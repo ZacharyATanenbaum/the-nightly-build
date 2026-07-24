@@ -45,7 +45,9 @@ def search_gdelt(query: str) -> list[dict[str, Any]]:
         "sort": "hybridrel",
         "timespan": "7d",
     }
-    url = "https://api.gdeltproject.org/api/v2/doc/doc?" + urllib.parse.urlencode(params)
+    url = "https://api.gdeltproject.org/api/v2/doc/doc?" + urllib.parse.urlencode(
+        params
+    )
     try:
         payload = request(url).json()
     except Exception:
