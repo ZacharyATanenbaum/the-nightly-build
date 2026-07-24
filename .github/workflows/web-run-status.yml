@@ -2,7 +2,7 @@ name: web-run-status
 
 on:
   workflow_run:
-    workflows: [web-night-shift, web-publish]
+    workflows: [nightly-build-check, web-publish]
     types: [completed]
 
 permissions:
