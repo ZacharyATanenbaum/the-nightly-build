@@ -1,0 +1,33 @@
+name: apply-cluster-patch
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/apply-cluster-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply and format the cluster selector
+        run: |
+          python scripts/apply_cluster_patch.py
+          uv run ruff format scripts/nb_web/collect.py scripts/nb_web/cluster.py tests/test_web_clusters.py
+          uv run ruff check scripts/nb_web/collect.py scripts/nb_web/cluster.py tests/test_web_clusters.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A scripts
+          git add tests/test_web_clusters.py
+          git commit -m "feat: require source-diverse story clusters"
+          git push origin "HEAD:${{ github.head_ref }}"
