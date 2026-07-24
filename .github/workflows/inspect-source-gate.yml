@@ -34,7 +34,9 @@ jobs:
         run: |
           uv run python - <<'PY'
           import json
-          from scripts.nb_web.research import fetch_source
+          import sys
+          sys.path.insert(0, 'scripts')
+          from nb_web.research import fetch_source
 
           clusters = json.load(open('.nb-web/candidates.json', encoding='utf-8'))
           full = json.load(open('.nb-web/candidates-full.json', encoding='utf-8'))
