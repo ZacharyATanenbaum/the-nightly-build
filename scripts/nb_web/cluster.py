@@ -181,8 +181,8 @@ def build_commissioning_clusters(
 
     The commissioning model does not receive isolated feed items. Each option is
     anchored by a record that owns the claim and is accompanied by independent
-    coverage from at least two domains. Targeted research still has to find the
-    second primary source required by the series proof.
+    coverage from at least two domains. Targeted research may add more owner-
+    authored records, but it never invents a second primary merely to satisfy a count.
     """
     if not rows:
         return []

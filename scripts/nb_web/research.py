@@ -1,4 +1,3 @@
-# ty: ignore
 """Targeted search, retrieval, and source-pack construction."""
 
 from __future__ import annotations
@@ -117,7 +116,7 @@ def search_google_news(query: str) -> list[dict[str, Any]]:
                 "summary": strip_markup(entry.get("summary") or ""),
                 "published": entry.get("published"),
                 "source_name": source_name or "Google News",
-                "kind_hint": primary_hint(item_url),
+                "kind_hint": "secondary",
             }
         )
     return rows
@@ -162,6 +161,42 @@ def jina_fallback(url: str) -> str:
         return ""
 
 
+def official_feed_record(
+    row: dict[str, Any], *, reason: str | None = None
+) -> dict[str, Any] | None:
+    """Preserve a substantive owner-authored feed record when its page blocks bots.
+
+    The fallback is deliberately unavailable to secondary and aggregator rows. It
+    carries only text the owner published in its feed, records why the full page
+    was unavailable, and never upgrades a search result into a primary source.
+    """
+    url = str(row.get("url") or "")
+    if primary_hint(url, row.get("kind_hint")) != "primary":
+        return None
+    title = clean_title(str(row.get("title") or ""))
+    summary = strip_markup(str(row.get("summary") or ""))
+    if not title or len(summary) < 120:
+        return None
+    publisher = str(row.get("source_name") or host_for(url))
+    published = str(row.get("published") or "unknown")
+    text = (
+        f"Official feed record from {publisher}.\n"
+        f"Title: {title}\n"
+        f"Published: {published}\n\n"
+        f"{summary}"
+    )
+    return {
+        **row,
+        "url": url,
+        "domain": host_for(url),
+        "kind_hint": "primary",
+        "text": text[:MAX_SOURCE_TEXT],
+        "text_length": len(text),
+        "retrieval": "official-feed-record",
+        "fetch_error": reason,
+    }
+
+
 def fetch_source(row: dict[str, Any]) -> dict[str, Any] | None:
     url = row["url"]
     try:
@@ -176,11 +211,20 @@ def fetch_source(row: dict[str, Any]) -> dict[str, Any] | None:
         text = jina_fallback(url)
         final_url = url
         if not text:
-            row["fetch_error"] = f"{type(first_error).__name__}: {first_error}"
+            reason = f"{type(first_error).__name__}: {first_error}"
+            fallback = official_feed_record(row, reason=reason)
+            if fallback is not None:
+                return fallback
+            row["fetch_error"] = reason
             return None
     text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
     text = re.sub(r"\n{3,}", "\n\n", text)
     if len(text) < 450:
+        fallback = official_feed_record(
+            row, reason=f"extracted page was only {len(text)} characters"
+        )
+        if fallback is not None:
+            return fallback
         return None
     return {
         **row,
@@ -189,6 +233,7 @@ def fetch_source(row: dict[str, Any]) -> dict[str, Any] | None:
         "kind_hint": primary_hint(final_url, row.get("kind_hint")),
         "text": text[:MAX_SOURCE_TEXT],
         "text_length": len(text),
+        "retrieval": "page",
     }
 
 
@@ -330,7 +375,7 @@ def research(selection_path: str) -> int:
 
     primary_count = sum(row["kind_hint"] == "primary" for row in balanced)
     secondary_count = sum(row["kind_hint"] == "secondary" for row in balanced)
-    ready = len(balanced) >= 8 and primary_count >= 2 and secondary_count >= 4
+    ready = len(balanced) >= 8 and primary_count >= 1 and secondary_count >= 5
 
     lines = [
         f"# Research pack: {selection.get('topic', '')}",

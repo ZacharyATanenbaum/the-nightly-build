@@ -81,10 +81,12 @@ def _draft_errors(draft: dict[str, Any], sources: list[dict[str, Any]]) -> list[
     kinds = Counter(known[marker]["kind_hint"] for marker in unique)
     if len(unique) < 6:
         errors.append(f"only {len(unique)} distinct sources cited; need 6")
-    if kinds["primary"] < 2:
-        errors.append(f"only {kinds['primary']} primary sources cited; need 2")
-    if kinds["secondary"] < 2:
-        errors.append(f"only {kinds['secondary']} secondary sources cited; need 2")
+    if kinds["primary"] < 1:
+        errors.append("no primary source cited; need the record that owns the claim")
+    if kinds["secondary"] < 3:
+        errors.append(
+            f"only {kinds['secondary']} secondary sources cited; need 3 independent sources"
+        )
     return errors
 
 

@@ -36,7 +36,7 @@ This is the connector-only runtime contract for a ChatGPT Web Scheduled Task. It
 - The article path is the only changed path.
 - Metadata, rendered dek, source count, and approximate word count agree with the article.
 - Every flex section has at least one citation; source entries appear in first-cite order.
-- At least six sources are cited, including at least two declared primary and two declared secondary sources.
+- At least six sources are cited, including the declared primary record that owns the central claim and at least three independent secondary sources.
 - No executable scripts except the shipped `../../assets/nb.js`; no external images, iframes, event handlers, or invented quotations.
 - The PR body contains the complete production record and accurately distinguishes verified facts, estimates, and synthesis.
 

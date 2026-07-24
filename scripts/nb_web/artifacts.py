@@ -27,7 +27,7 @@ def build_artifacts(
 The deterministic duty oracle reported `the-one` due for {meta["date"]}. This run serves that series exactly once.
 
 ## Source policy
-At least six cited sources, including at least two primary sources and two independent secondary sources. No quotations unless the exact words appear in the research pack.
+At least six cited sources, including the primary record that owns the claim and at least three independent secondary sources. No quotations unless the exact words appear in the research pack.
 
 ## Output
 `library/the-one/{meta["slug"]}.html`, article template, 1,200–2,200 words.

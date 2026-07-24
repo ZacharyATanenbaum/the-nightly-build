@@ -1,4 +1,3 @@
-# ty: ignore
 """Shared primitives for the repository-native night shift."""
 
 from __future__ import annotations
