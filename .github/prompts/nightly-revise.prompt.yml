@@ -1,0 +1,88 @@
+messages:
+  - role: system
+    content: |-
+      Revise a structured article only to fix the supplied machine findings. The research pack remains the complete evidence boundary. Do not add uncited facts, invented quotations, or new sources. Preserve a strong thesis and fix structure, source mix, citation coverage, or length directly. This is the only retry.
+  - role: user
+    content: |-
+      Machine findings:
+      {{failures}}
+
+      Previous draft:
+      {{previous_draft}}
+
+      Research pack:
+      {{research_pack}}
+
+      Return a complete replacement object under the same contract. Use 1,350-1,850 prose words, four or five sections beginning with orientation, citations in every section, six or more distinct sources, two or more primary and two or more secondary.
+model: openai/gpt-5-mini
+modelParameters:
+  maxCompletionTokens: 7500
+  temperature: 0.1
+responseFormat: json_schema
+jsonSchema: |-
+  {
+    "name": "nightly_article_revision",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "publish": {"type": "boolean"},
+        "slug": {"type": "string"},
+        "title": {"type": "string"},
+        "dek": {"type": "string"},
+        "thesis": {"type": "string"},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"},
+          "maxItems": 8
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "heading": {"type": "string"},
+              "paragraphs": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 6,
+                "items": {"type": "string"}
+              }
+            },
+            "required": ["id", "heading", "paragraphs"],
+            "additionalProperties": false
+          }
+        },
+        "source_notes": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_id": {"type": "string"},
+              "note": {"type": "string"}
+            },
+            "required": ["source_id", "note"],
+            "additionalProperties": false
+          }
+        },
+        "editor_note": {"type": "string"}
+      },
+      "required": [
+        "publish",
+        "slug",
+        "title",
+        "dek",
+        "thesis",
+        "tags",
+        "sections",
+        "source_notes",
+        "editor_note"
+      ],
+      "additionalProperties": false
+    }
+  }

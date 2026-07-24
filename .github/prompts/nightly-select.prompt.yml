@@ -1,0 +1,70 @@
+messages:
+  - role: system
+    content: |-
+      You are the commissioning editor for one nightly analytical article. Select one subject only when the supplied candidate record supports a serious, cited piece. Prefer a concrete development represented by at least two primary records and several independent secondary reports. A primary record owns the claim: a paper, filing, ruling, release, dataset, repository, standards document, or government notice. A company's article about itself is primary, never independent secondary evidence.
+
+      Reject feed-shaped roundups, sports, rumors, personalities without a mechanism, and topics already covered in the recent catalog. Favor a subject where the article can explain how something works, what changed, and the consequence. Do not invent URLs. Use exact candidate URLs.
+  - role: user
+    content: |-
+      Recent catalog:
+      {{recent}}
+
+      Current candidates:
+      {{candidates}}
+
+      Choose the strongest publishable subject. The search query and terms must be specific enough to retrieve additional reporting. Include at least two candidate primary URLs and at least two candidate secondary URLs when the record permits. Set publish=false when source depth is not proven.
+model: openai/gpt-5-mini
+modelParameters:
+  maxCompletionTokens: 1800
+  temperature: 0.1
+responseFormat: json_schema
+jsonSchema: |-
+  {
+    "name": "nightly_selection",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "publish": {"type": "boolean"},
+        "topic": {"type": "string"},
+        "angle": {"type": "string"},
+        "why_now": {"type": "string"},
+        "query": {"type": "string"},
+        "search_terms": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "selected_candidate_urls": {
+          "type": "array",
+          "items": {"type": "string"},
+          "maxItems": 10
+        },
+        "primary_urls": {
+          "type": "array",
+          "items": {"type": "string"},
+          "maxItems": 6
+        },
+        "secondary_urls": {
+          "type": "array",
+          "items": {"type": "string"},
+          "maxItems": 8
+        },
+        "reason": {"type": "string"}
+      },
+      "required": [
+        "publish",
+        "topic",
+        "angle",
+        "why_now",
+        "query",
+        "search_terms",
+        "selected_candidate_urls",
+        "primary_urls",
+        "secondary_urls",
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  }
