@@ -1,4 +1,5 @@
 # This trusted workflow builds the current library and publishes a static branch.
+# A merged article is present; changing this file retriggers the immutable first-edition build.
 name: web-publish
 
 on:
