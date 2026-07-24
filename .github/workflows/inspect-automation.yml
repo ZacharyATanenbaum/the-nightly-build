@@ -6,28 +6,30 @@ on:
       - .github/workflows/inspect-automation.yml
 
 permissions:
-  actions: read
-  contents: read
-  pull-requests: write
+  contents: write
 
 jobs:
-  inspect:
+  finalize:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect recent workflow failures
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Apply the final wiring and remove this helper
         run: |
           set -euo pipefail
-          {
-            echo '## Failed unattended workflow logs'
-            for id in 30059523020 30059522964 30059546708; do
-              echo
-              echo "### Run $id"
-              echo '```text'
-              gh run view "$id" --repo "$GITHUB_REPOSITORY" --log-failed 2>&1 | tail -n 160
-              echo '```'
-            done
-          } > /tmp/automation.md
-          gh pr comment "${{ github.event.pull_request.number }}" \
-            --repo "$GITHUB_REPOSITORY" --body-file /tmp/automation.md
+          sed -i \
+            -e 's#candidates: .nb-web/candidates.json#candidates: .nb-web/candidates-prompt.json#' \
+            -e 's#recent: .nb-web/recent.json#recent: .nb-web/recent-prompt.json#' \
+            .github/workflows/web-night-shift.yml
+          sed -i \
+            's#"model": "openai/gpt-5-mini"#"model": "openai/gpt-4.1"#' \
+            scripts/nb_web/article.py
+          rm .github/workflows/inspect-automation.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: complete unattended publication wiring"
+          git push origin "HEAD:${{ github.head_ref }}"
