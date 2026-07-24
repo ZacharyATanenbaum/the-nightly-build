@@ -61,8 +61,7 @@ jsonSchema: |-
                       "type": "array",
                       "items": {"type": "string"},
                       "minItems": 1,
-                      "maxItems": 4,
-                      "uniqueItems": true
+                      "maxItems": 4
                     }
                   },
                   "required": ["text", "source_ids"],
