@@ -1,0 +1,40 @@
+name: apply-structured-citations-patch
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/apply-structured-citations-patch.yml
+      - scripts/apply_structured_citations_patch.py
+      - press/series/the-one/bootstrap-selection.json
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply and validate machine-owned citations
+        run: |
+          set -euo pipefail
+          python scripts/apply_structured_citations_patch.py
+          uv sync --group figure-capture --group charts
+          uv run ruff format scripts/nb_web/article.py tests/test_web_structured_citations.py
+          uv run ruff check scripts/nb_web/article.py tests/test_web_structured_citations.py
+          uv run ty check
+          uv run pytest tests/test_web_structured_citations.py tests/test_web_source_identity.py tests/test_web_research_pack.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/prompts/nightly-write.prompt.yml .github/prompts/nightly-revise.prompt.yml
+          git add scripts/nb_web/article.py tests/test_web_structured_citations.py
+          git add -A scripts/apply_structured_citations_patch.py
+          git commit -m "fix: make citation links machine-owned"
+          git push origin "HEAD:${{ github.head_ref }}"
