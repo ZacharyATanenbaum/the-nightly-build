@@ -223,17 +223,17 @@ def prepare(library_arg: str) -> int:
         reverse=True,
     )[:140]
     recent = recent_library(library)
-    (WORK / "candidates.json").write_text(
+    (WORK / "candidates-full.json").write_text(
         json.dumps(ordered, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    (WORK / "candidates-prompt.json").write_text(
+    (WORK / "candidates.json").write_text(
         json.dumps(prompt_candidates(ordered), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    (WORK / "recent.json").write_text(
+    (WORK / "recent-full.json").write_text(
         json.dumps(recent, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    (WORK / "recent-prompt.json").write_text(
+    (WORK / "recent.json").write_text(
         json.dumps(
             [
                 {
