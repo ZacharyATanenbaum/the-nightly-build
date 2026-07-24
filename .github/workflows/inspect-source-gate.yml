@@ -1,0 +1,30 @@
+name: inspect-source-gate
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/inspect-source-gate.yml
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract the source-gate decision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run view 30060246482 --repo "$GITHUB_REPOSITORY" --log > /tmp/run.log
+          {
+            echo '## Source-gate diagnostics'
+            echo '```text'
+            grep -E -C 5 'No article was commissioned|fetched [0-9]+ usable sources|ready=|reason=|selector declined|source-thin' /tmp/run.log || true
+            echo '```'
+          } > /tmp/comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" --body-file /tmp/comment.md
