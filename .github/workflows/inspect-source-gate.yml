@@ -6,7 +6,6 @@ on:
       - .github/workflows/inspect-source-gate.yml
 
 permissions:
-  actions: read
   contents: read
   pull-requests: write
 
@@ -14,16 +13,35 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract the source-gate decision
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Checkout published library
+        uses: actions/checkout@v4
+        with:
+          ref: library
+          path: library-checkout
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rebuild commissioning clusters
+        id: prepare
+        run: uv run scripts/web_night_shift.py prepare --library library-checkout
+
+      - name: Post clusters
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          gh run view 30060768857 --repo "$GITHUB_REPOSITORY" --log > /tmp/run.log
           {
-            echo '## Source-gate diagnostics'
-            echo '```text'
-            grep -E -C 6 'No article was commissioned|fetched [0-9]+ usable sources|ready=|reason=|selector declined|source-thin' /tmp/run.log || true
+            echo '## Current commissioning clusters'
+            echo
+            echo 'Prepare result: `${{ steps.prepare.outputs.reason }}`'
+            echo
+            echo '```json'
+            head -c 50000 .nb-web/candidates.json
+            echo
             echo '```'
           } > /tmp/comment.md
           gh pr comment "${{ github.event.pull_request.number }}" \
