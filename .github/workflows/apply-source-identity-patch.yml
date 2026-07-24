@@ -22,7 +22,10 @@ jobs:
           python-version: "3.12"
 
       - name: Apply the source identity patch
-        run: python scripts/apply_source_identity_patch.py
+        run: |
+          python scripts/apply_source_identity_patch.py
+          sed -i '1{/^# ty: ignore$/d;}' \
+            scripts/nb_web/common.py scripts/nb_web/research.py
 
       - name: Lock and validate the changed system
         id: validate
