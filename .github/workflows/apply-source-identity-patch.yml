@@ -1,0 +1,52 @@
+name: apply-source-identity-patch
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/apply-source-identity-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply the source identity patch
+        run: python scripts/apply_source_identity_patch.py
+
+      - name: Lock and validate the changed system
+        run: |
+          uv lock
+          uv sync --group figure-capture --group charts
+          uv run ruff format \
+            scripts/nb_web/common.py scripts/nb_web/research.py \
+            scripts/nb_web/article.py scripts/nb_web/artifacts.py \
+            scripts/nb_web/cluster.py tests/test_web_source_identity.py
+          uv run ruff check \
+            scripts/nb_web/common.py scripts/nb_web/research.py \
+            scripts/nb_web/article.py scripts/nb_web/artifacts.py \
+            scripts/nb_web/cluster.py tests/test_web_source_identity.py
+          uv run ty check
+          uv run pytest tests/test_web_source_identity.py tests/test_web_clusters.py
+          uv run engine/validate_config.py --repo .
+
+      - name: Commit the validated patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add WEB_TASK.md pyproject.toml uv.lock
+          git add .github/prompts
+          git add press/series/the-one/series.yaml
+          git add scripts/nb_web tests/test_web_source_identity.py
+          git add -A scripts/apply_source_identity_patch.py
+          git commit -m "fix: preserve genuine primary-source evidence"
+          git push origin "HEAD:${{ github.head_ref }}"
