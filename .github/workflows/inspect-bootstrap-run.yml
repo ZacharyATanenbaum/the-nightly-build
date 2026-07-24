@@ -13,66 +13,52 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Extract the latest failed bootstrap artifact
+      - name: Wait for and inspect the structured-citation bootstrap run
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" \
-            --jq '[.workflow_runs[] | select(.name == "bootstrap-first-edition" and .conclusion == "failure")] | sort_by(.id) | reverse | .[0].id // empty')
-          mkdir -p /tmp/bootstrap-artifacts
-          if [ -n "$run_id" ]; then
-            gh run download "$run_id" --repo "$GITHUB_REPOSITORY" \
-              --dir /tmp/bootstrap-artifacts || true
+          target_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          run_id=""
+          for _ in $(seq 1 60); do
+            run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" \
+              --jq "[.workflow_runs[] | select(.name == \"bootstrap-first-edition\" and .head_sha == \"$target_sha\")] | sort_by(.id) | reverse | .[0].id // empty")
+            if [ -n "$run_id" ]; then break; fi
+            sleep 10
+          done
+          if [ -z "$run_id" ]; then
+            echo "No bootstrap run found for $target_sha." > /tmp/bootstrap.md
+          else
+            for _ in $(seq 1 120); do
+              status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq .status)
+              if [ "$status" = "completed" ]; then break; fi
+              sleep 10
+            done
+            {
+              echo "## Bootstrap run $run_id"
+              echo
+              echo '```text'
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+                --jq '[.id, .status, (.conclusion // "-"), .event, .head_sha, .html_url] | @tsv'
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+                --jq '.jobs[] | [.id, .name, .status, (.conclusion // "-")] | @tsv'
+              echo '```'
+              echo
+              echo '## Article pull requests'
+              echo '```text'
+              gh pr list --repo "$GITHUB_REPOSITORY" --state all \
+                --search 'in:title "nb: the-one/"' --limit 10 \
+                --json number,state,mergedAt,title,url \
+                --jq '.[] | [.number, .state, (.mergedAt // "-"), .title, .url] | @tsv'
+              echo '```'
+              echo
+              echo '## Failed log'
+              echo '```text'
+              gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --log-failed 2>&1 | tail -n 300 || true
+              echo '```'
+            } > /tmp/bootstrap.md
           fi
-          RUN_ID="$run_id" python - <<'PY' > /tmp/bootstrap.md
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path('/tmp/bootstrap-artifacts')
-          run_id = os.environ.get('RUN_ID') or 'none'
-          print(f'## Bootstrap artifact for run {run_id}\n')
-          files = sorted(path for path in root.rglob('*') if path.is_file())
-          print('### Files\n')
-          print('```text')
-          for path in files:
-              print(path.relative_to(root))
-          print('```\n')
-
-          def first(name: str):
-              return next((path for path in files if path.name == name), None)
-
-          for name in ('render-errors.txt', 'failures.txt', 'proof-first.txt', 'draft.json'):
-              path = first(name)
-              print(f'### {name}\n')
-              print('```text')
-              if path is None:
-                  print('not found')
-              else:
-                  text = path.read_text(encoding='utf-8', errors='replace')
-                  print(text[:30000])
-              print('```\n')
-
-          source_path = first('sources.json')
-          print('### Source IDs available to the model\n')
-          print('```json')
-          if source_path is None:
-              print('[]')
-          else:
-              sources = json.loads(source_path.read_text(encoding='utf-8'))
-              summary = [
-                  {
-                      'id': row.get('id'),
-                      'kind': row.get('kind_hint'),
-                      'title': row.get('title'),
-                      'url': row.get('url'),
-                  }
-                  for row in sources
-              ]
-              print(json.dumps(summary, indent=2, ensure_ascii=False)[:30000])
-          print('```')
-          PY
           gh pr comment "${{ github.event.pull_request.number }}" \
             --repo "$GITHUB_REPOSITORY" --body-file /tmp/bootstrap.md
