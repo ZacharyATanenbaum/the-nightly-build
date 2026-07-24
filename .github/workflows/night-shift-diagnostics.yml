@@ -1,0 +1,47 @@
+name: night-shift-diagnostics
+
+on:
+  pull_request:
+    paths:
+      - scripts/web_night_shift.py
+      - scripts/nb_web/**
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Capture targeted diagnostics
+        run: |
+          set +e
+          {
+            echo '$ uv run ruff check scripts/web_night_shift.py scripts/nb_web'
+            uv run ruff check scripts/web_night_shift.py scripts/nb_web
+            echo
+            echo '$ uv run ruff format --check scripts/web_night_shift.py scripts/nb_web'
+            uv run ruff format --check scripts/web_night_shift.py scripts/nb_web
+          } > /tmp/night-shift-diagnostics.txt 2>&1
+          exit 0
+
+      - name: Post diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '## Night-shift diagnostics'
+            echo '```text'
+            head -c 50000 /tmp/night-shift-diagnostics.txt
+            echo
+            echo '```'
+          } > /tmp/comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" --body-file /tmp/comment.md
