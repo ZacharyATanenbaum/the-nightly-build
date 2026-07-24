@@ -21,5 +21,5 @@
     "https://techcrunch.com/2026/07/23/openai-makes-chatgpt-health-available-to-all-u-s-users/",
     "https://www.theverge.com/ai-artificial-intelligence/970115/openai-chatgpt-health-launch-claims"
   ],
-  "reason": "This is a one-time first-edition commission. It has an owner-authored primary record, independent launch coverage, a concrete systems mechanism, and enough public-interest consequence to justify targeted research before drafting. The model receives a bounded evidence pack while the complete fetched source record remains available for audit."
+  "reason": "This is a one-time first-edition commission. It has an owner-authored primary record, independent launch coverage, a concrete systems mechanism, and enough public-interest consequence to justify targeted research before drafting. The model receives a bounded evidence pack, and paragraph citations are selected as structured source IDs that deterministic code renders into links."
 }
