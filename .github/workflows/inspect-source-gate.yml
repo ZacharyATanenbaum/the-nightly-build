@@ -32,7 +32,8 @@ jobs:
 
       - name: Probe every clustered primary record
         run: |
-          uv run python - <<'PY'
+          uv run --with beautifulsoup4 --with feedparser --with pypdf \
+            --with requests --with trafilatura python - <<'PY'
           import json
           import sys
           sys.path.insert(0, 'scripts')
