@@ -30,18 +30,50 @@ jobs:
         id: prepare
         run: uv run scripts/web_night_shift.py prepare --library library-checkout
 
-      - name: Post clusters
+      - name: Probe every clustered primary record
+        run: |
+          uv run python - <<'PY'
+          import json
+          from scripts.nb_web.research import fetch_source
+
+          clusters = json.load(open('.nb-web/candidates.json', encoding='utf-8'))
+          full = json.load(open('.nb-web/candidates-full.json', encoding='utf-8'))
+          by_url = {row['url']: row for row in full}
+          results = []
+          seen = set()
+          for cluster in clusters:
+              for source in cluster['sources']:
+                  if source['kind_hint'] != 'primary' or source['url'] in seen:
+                      continue
+                  seen.add(source['url'])
+                  row = dict(by_url[source['url']])
+                  fetched = fetch_source(row)
+                  results.append({
+                      'cluster': cluster['cluster_id'],
+                      'title': row.get('title'),
+                      'url': row['url'],
+                      'feed_summary_length': len(row.get('summary') or ''),
+                      'feed_summary': (row.get('summary') or '')[:1000],
+                      'fetched': fetched is not None,
+                      'fetched_kind': fetched and fetched.get('kind_hint'),
+                      'fetched_text_length': fetched and fetched.get('text_length'),
+                      'fetch_error': row.get('fetch_error'),
+                  })
+          with open('/tmp/primary-probes.json', 'w', encoding='utf-8') as handle:
+              json.dump(results, handle, indent=2, ensure_ascii=False)
+          PY
+
+      - name: Post primary probes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            echo '## Current commissioning clusters'
+            echo '## Clustered primary-source probes'
             echo
             echo 'Prepare result: `${{ steps.prepare.outputs.reason }}`'
             echo
             echo '```json'
-            head -c 50000 .nb-web/candidates.json
-            echo
+            cat /tmp/primary-probes.json
             echo '```'
           } > /tmp/comment.md
           gh pr comment "${{ github.event.pull_request.number }}" \
