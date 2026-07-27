@@ -6,17 +6,18 @@
 """Probe the PR's rendered article in headless Chrome for CI.
 
 The file-level proof cannot see how a page renders, so validate runs this
-after check.py: it loads the built article at phone width and asserts no
-horizontal overflow, that the stylesheet attached (an unstyled page computes
-the browser's fallback serif, which is how an invented body class shipped
-unstyled once), and that the page threw no errors. A missing or unstartable
-browser is a failed machine gate, not a publishable article.
+after check.py: it serves the built site over loopback, loads the article at
+phone width, and asserts that the intended page loaded, the article stylesheet
+attached, the page has no horizontal overflow, and no runtime exception fired.
+A missing or unstartable browser is a failed machine gate, not a publishable
+article.
 
 Usage: python3 render_check.py --site <built-site-dir> --article
 library/<series>/<slug>.html
 """
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
@@ -26,6 +27,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -59,6 +61,55 @@ def free_port():
         return sock.getsockname()[1]
 
 
+def stop_process(proc):
+    if proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5)
+
+
+def wait_for_http(url, proc):
+    for _ in range(50):
+        if proc.poll() is not None:
+            return False
+        try:
+            with urllib.request.urlopen(url, timeout=1) as response:
+                return response.status == 200
+        except (urllib.error.URLError, OSError):
+            time.sleep(0.1)
+    return False
+
+
+@contextlib.contextmanager
+def serve(site):
+    port = free_port()
+    root_url = f"http://127.0.0.1:{port}/"
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "http.server",
+            str(port),
+            "--bind",
+            "127.0.0.1",
+            "--directory",
+            os.path.abspath(site),
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        if not wait_for_http(root_url, proc):
+            raise RuntimeError(f"local HTTP server did not start (exit {proc.poll()})")
+        yield root_url
+    finally:
+        stop_process(proc)
+
+
 def wait_for_page_target(port, proc):
     for _ in range(75):
         if proc.poll() is not None:
@@ -66,8 +117,8 @@ def wait_for_page_target(port, proc):
         try:
             with urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/json", timeout=1
-            ) as resp:
-                tabs = json.load(resp)
+            ) as response:
+                tabs = json.load(response)
             for tab in tabs:
                 if tab.get("type") == "page":
                     return tab
@@ -82,18 +133,7 @@ def wait_for_page_target(port, proc):
     return None
 
 
-def stop_process(proc):
-    if proc.poll() is not None:
-        return
-    proc.terminate()
-    try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait(timeout=5)
-
-
-def probe(chrome, page_path):
+def probe(chrome, page_url):
     port = free_port()
     env = os.environ.copy()
     no_proxy = [part for part in env.get("NO_PROXY", "").split(",") if part]
@@ -136,10 +176,10 @@ def probe(chrome, page_path):
                 ).strip()
                 if len(details) > 2000:
                     details = details[-2000:]
-                exit_detail = f"exit code {proc.returncode}"
+                detail = f"exit code {proc.returncode}"
                 if details:
-                    exit_detail += f"; Chrome output: {details}"
-                raise RuntimeError(exit_detail)
+                    detail += f"; Chrome output: {details}"
+                raise RuntimeError(detail)
 
             ws = websocket.create_connection(
                 target["webSocketDebuggerUrl"], timeout=30, http_proxy_host=None
@@ -156,12 +196,12 @@ def probe(chrome, page_path):
                     )
                 )
                 while True:
-                    resp = json.loads(ws.recv())
-                    if resp.get("method") == "Runtime.exceptionThrown":
-                        detail = resp["params"]["exceptionDetails"]
+                    response = json.loads(ws.recv())
+                    if response.get("method") == "Runtime.exceptionThrown":
+                        detail = response["params"]["exceptionDetails"]
                         errors.append(detail.get("text", "exception"))
-                    if resp.get("id") == msg_id:
-                        return resp.get("result", {})
+                    if response.get("id") == msg_id:
+                        return response.get("result", {})
 
             send("Runtime.enable")
             send(
@@ -173,31 +213,56 @@ def probe(chrome, page_path):
                     "mobile": True,
                 },
             )
-            send("Page.navigate", {"url": "file://" + os.path.abspath(page_path)})
-            # Poll until the file: document (not the about:blank Chrome started
-            # on) finishes loading; a static local page takes tens of ms, and the
-            # 5s cap only defers to the fact checks below, which fail loudly.
+            navigation = send("Page.navigate", {"url": page_url})
+            if navigation.get("errorText"):
+                raise RuntimeError(f"navigation failed: {navigation['errorText']}")
+
+            loaded = False
             for _ in range(100):
-                loaded = send(
+                state = send(
                     "Runtime.evaluate",
                     {
                         "expression": (
-                            "location.protocol === 'file:' "
-                            "&& document.readyState === 'complete'"
+                            "JSON.stringify({href: location.href, "
+                            "ready: document.readyState})"
                         )
                     },
                 )
-                if loaded.get("result", {}).get("value"):
-                    break
+                raw = state.get("result", {}).get("value")
+                if raw:
+                    current = json.loads(raw)
+                    if current["href"] == page_url and current["ready"] == "complete":
+                        loaded = True
+                        break
                 time.sleep(0.05)
+            if not loaded:
+                raise RuntimeError("article URL did not finish loading")
+
             result = send(
                 "Runtime.evaluate",
                 {
                     "expression": (
-                        "JSON.stringify({"
+                        "(() => {"
+                        "const body = getComputedStyle(document.body);"
+                        "const readingEl = document.querySelector('article.nb-reading');"
+                        "const titleEl = document.querySelector('h1.nb-title');"
+                        "const reading = readingEl ? getComputedStyle(readingEl) : null;"
+                        "const title = titleEl ? getComputedStyle(titleEl) : null;"
+                        "return JSON.stringify({"
+                        "hasViewport: !!document.querySelector('meta[name=viewport]'),"
+                        "hasArticleClass: document.body.classList.contains('nb-article'),"
+                        "hasReading: !!readingEl,"
+                        "hasTitle: !!titleEl,"
                         "scrollWidth: document.documentElement.scrollWidth,"
                         "innerWidth: window.innerWidth,"
-                        "bodyFont: getComputedStyle(document.body).fontFamily})"
+                        "bodyDisplay: body.display,"
+                        "bodyMargin: body.margin,"
+                        "bodyFont: body.fontFamily,"
+                        "readingMaxWidth: reading ? reading.maxWidth : null,"
+                        "readingPaddingLeft: reading ? reading.paddingLeft : null,"
+                        "titleWeight: title ? title.fontWeight : null"
+                        "});"
+                        "})()"
                     )
                 },
             )
@@ -215,10 +280,10 @@ def probe(chrome, page_path):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--site", required=True, help="built site directory")
-    ap.add_argument("--article", required=True, help="library/<series>/<slug>.html")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--site", required=True, help="built site directory")
+    parser.add_argument("--article", required=True, help="library/<series>/<slug>.html")
+    args = parser.parse_args()
 
     page = os.path.join(args.site, args.article)
     if not os.path.isfile(page):
@@ -228,24 +293,40 @@ def main():
     if chrome is None:
         print("render probe FAIL: no Chrome executable in this environment")
         return 1
+
     try:
-        facts = probe(chrome, page)
+        with serve(args.site) as root_url:
+            page_url = urllib.parse.urljoin(root_url, urllib.parse.quote(args.article))
+            facts = probe(chrome, page_url)
     except Exception as exc:
-        print(f"render probe FAIL: Chrome did not start: {exc}")
+        print(f"render probe FAIL: browser probe could not run: {exc}")
         return 1
 
     failures = []
-    # Mobile emulation grows the layout viewport to fit overflowing content,
-    # so compare against the configured width, not window.innerWidth.
+    if not facts["hasViewport"]:
+        failures.append("missing viewport metadata")
+    if not facts["hasArticleClass"] or not facts["hasReading"] or not facts["hasTitle"]:
+        failures.append("required article chrome is missing")
     if facts["scrollWidth"] > VIEWPORT + 2:
         failures.append(
             f"horizontal overflow: content is {facts['scrollWidth']}px wide "
             f"in a {VIEWPORT}px viewport"
         )
-    if "times" in facts["bodyFont"].lower():
+    if facts["bodyDisplay"] != "flex" or facts["bodyMargin"] != "0px":
         failures.append(
-            "stylesheet did not attach: body computed font is the browser "
-            f"fallback ({facts['bodyFont']}); check the body class and asset links"
+            "stylesheet did not attach: expected body display flex and zero margin, "
+            f"got display={facts['bodyDisplay']} margin={facts['bodyMargin']}"
+        )
+    if facts["readingMaxWidth"] != "800px" or facts["readingPaddingLeft"] != "20px":
+        failures.append(
+            "article stylesheet did not attach: expected .nb-reading max-width 800px "
+            f"and 20px padding, got max-width={facts['readingMaxWidth']} "
+            f"padding-left={facts['readingPaddingLeft']}"
+        )
+    if facts["titleWeight"] != "600":
+        failures.append(
+            "article title style did not attach: expected font-weight 600, "
+            f"got {facts['titleWeight']}"
         )
     for error in facts["exceptions"]:
         failures.append(f"page error: {error}")
@@ -256,7 +337,7 @@ def main():
         return 1
     print(
         f"render probe ok: {VIEWPORT}px viewport, no overflow, "
-        f"styles attached ({facts['bodyFont'].split(',')[0]}), no page errors"
+        f"article styles attached ({facts['bodyFont'].split(',')[0]}), no page errors"
     )
     return 0
 
