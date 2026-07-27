@@ -34,8 +34,8 @@ adapter and protected GitHub CI supplies the machine proof.
 
 ## ChatGPT Scheduled Tasks
 
-This route keeps all generative work inside the ChatGPT task. GitHub is durable
-state and an independent delivery system, not a second model runtime.
+This route keeps all generative and repair work inside the ChatGPT task. GitHub
+is durable state and an independent delivery system, not a second model runtime.
 
 ![ChatGPT Scheduled Task architecture](../assets/chatgpt-scheduled-task-architecture.svg)
 
@@ -48,25 +48,46 @@ state and an independent delivery system, not a second model runtime.
 - public-web research and source verification;
 - drafting, citations, HTML assembly, and bounded revision;
 - branch creation, commits, article-PR creation, and failed-PR repair through
-  the connected GitHub app.
+  the connected GitHub app;
+- waiting for the current head's check, merge, publisher, and final published
+  artifact before declaring success.
 
 **GitHub Actions performs only:**
 
-- the deterministic article proof and browser render probe;
-- labeling and auto-merge after a green required check;
-- static site, archive, search, and feed publication.
+- deterministic article proof and a fail-closed browser render probe;
+- labeling and protected auto-merge after a green required check;
+- exactly one static site, archive, search, and feed publication path;
+- durable status reporting that the task can read back.
 
 Do not use GitHub Models, `actions/ai-inference`, or a GitHub generation cron in
 this architecture. Those would create a second scheduler and a second model
 control loop for the same paper.
 
+### Completion contract
+
+Opening an article PR is not completion. The task may report success only after
+all of these facts are observed for the same article:
+
+1. The current PR head SHA has a successful required article check.
+2. That validated head has merged into `library`.
+3. The sole configured publisher has completed successfully after the merge.
+4. The exact article exists at the published endpoint with matching series,
+   slug, title, and date metadata.
+
+Queued and in-progress checks remain unfinished. Article failures are repaired
+on the same branch from the editor comment and job logs. Infrastructure failures
+may be rerun, but retries remain bounded. If those bounds are exhausted, the
+run reports `BLOCKED`, preserves the PR, and the next task resumes it before
+commissioning anything else.
+
 ### Setup
 
 1. Bootstrap and configure the fork normally. The `library` branch, protected
-   article check, auto-merge, and publisher must already work.
+   article check, auto-merge, durable status reporting, and sole publisher must
+   already work.
 2. Connect the fork to ChatGPT's GitHub app. Grant the narrow persistent actions
-   needed to read repository state, create branches and commits, and open or
-   update pull requests.
+   needed to read repository and Actions state, create branches and commits,
+   open or update pull requests, and rerun failed jobs.
 3. Prove the exact write surface before scheduling: create a disposable branch,
    commit a harmless file, open a draft PR, then close the PR and remove or reset
    the branch. A setup agent must not infer write access from read access.
@@ -74,8 +95,12 @@ control loop for the same paper.
    contract and deliberately sends executable proof back to GitHub CI.
 5. Create one daily Scheduled Task for the entire paper with the prompt below.
    Do not also create a GitHub generation schedule.
-6. Run the task once immediately and verify the resulting article PR, required
-   check, merge, publisher run, and final URL.
+6. Test the closure path with a disposable or historical article on an isolated
+   base. Require deterministic proof, a real browser-render pass, auto-merge,
+   publisher success, and exact published metadata. Do not test by publishing a
+   fake production article.
+7. Run the real task once when the product exposes that control and verify the
+   same completion contract.
 
 ### Scheduled Task prompt
 
@@ -84,12 +109,16 @@ instruction:
 
 > Run the Daily Nightly Build for `<repo>`. Perform all subject selection,
 > public-web research, source verification, article drafting, bounded revision,
-> and pull-request preparation yourself using the connected GitHub app and the
-> public web. Read `WEB_TASK.md` from `main` and follow it exactly. Do not
-> dispatch, invoke, or rely on GitHub Models, `actions/ai-inference`, or any
-> GitHub-hosted article-generation workflow. GitHub Actions are only the
-> independent CI validator, auto-merge gate, and static publisher. If no article
-> is due or the evidence is insufficient, publish nothing.
+> pull-request preparation, and failed-article repair yourself using the
+> connected GitHub app and the public web. Read `WEB_TASK.md` from `main` and
+> follow it exactly. Do not dispatch, invoke, or rely on GitHub Models,
+> `actions/ai-inference`, or any GitHub-hosted article-generation workflow.
+> GitHub Actions are only deterministic validation, protected auto-merge, and
+> static publishing. Do not finish after opening a pull request: wait for the
+> current head's check, repair observed blockers on the same PR, verify merge and
+> publisher success, and report success only after the exact article exists at
+> the published endpoint. If no article is due or the evidence is insufficient,
+> publish nothing.
 
 One task runs the whole paper. Adding, pausing, completing, or changing a series
 updates repository state rather than the task. The task reconstructs every run
@@ -106,17 +135,20 @@ and generation surface after the ChatGPT task is active:
 - GitHub Models prompt files;
 - generation-only selection, research-pack, drafting, or revision entrypoints.
 
-Keep the trusted article check, auto-merge path, status reporting, and static
-publisher. Removing generation does not mean removing CI.
+Keep the trusted article check, protected auto-merge path, durable status
+reporting, and one static publisher. Remove or disable duplicate publisher paths
+during migration; a successful article should produce one authoritative
+publication result, not competing green and red workflows.
 
 ### Security boundary
 
 The task reads arbitrary web pages, so treat its proposed article as untrusted.
 It may write only an article branch and PR. The required check runs without task
 credentials and rejects unsafe HTML, malformed metadata, weak source structure,
-and invalid bundles before auto-merge. Protect `main` and `library`; never give
-the task a reason to modify engine, workflow, press, template, or site-asset
-files during an article run.
+and invalid bundles before auto-merge. The browser probe must fail closed when
+Chrome, navigation, article structure, or stylesheet evidence is unavailable.
+Protect `main` and `library`; never give the task a reason to modify engine,
+workflow, press, template, or site-asset files during an article run.
 
 ## The universal path: GitHub Actions
 
