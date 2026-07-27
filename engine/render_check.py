@@ -29,7 +29,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
 import websocket
 
@@ -143,10 +142,10 @@ def probe(chrome, page_url):
     env["NO_PROXY"] = ",".join(no_proxy)
     env["no_proxy"] = env["NO_PROXY"]
 
-    with tempfile.TemporaryDirectory(prefix="render-check-profile-") as profile:
-        fd, log_path = tempfile.mkstemp(prefix="render-check-chrome-", suffix=".log")
-        os.close(fd)
-        log_handle = Path(log_path).open("w", encoding="utf-8")
+    with (
+        tempfile.TemporaryDirectory(prefix="render-check-profile-") as profile,
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8") as log_handle,
+    ):
         proc = subprocess.Popen(
             [
                 chrome,
@@ -171,9 +170,8 @@ def probe(chrome, page_url):
             if target is None:
                 stop_process(proc)
                 log_handle.flush()
-                details = Path(log_path).read_text(
-                    encoding="utf-8", errors="replace"
-                ).strip()
+                log_handle.seek(0)
+                details = log_handle.read().strip()
                 if len(details) > 2000:
                     details = details[-2000:]
                 detail = f"exit code {proc.returncode}"
@@ -182,7 +180,9 @@ def probe(chrome, page_url):
                 raise RuntimeError(detail)
 
             ws = websocket.create_connection(
-                target["webSocketDebuggerUrl"], timeout=30, http_proxy_host=None
+                target["webSocketDebuggerUrl"],
+                timeout=30,
+                http_proxy_host=None,
             )
             msg_id = 0
             errors = []
@@ -192,7 +192,11 @@ def probe(chrome, page_url):
                 msg_id += 1
                 ws.send(
                     json.dumps(
-                        {"id": msg_id, "method": method, "params": params or {}}
+                        {
+                            "id": msg_id,
+                            "method": method,
+                            "params": params or {},
+                        }
                     )
                 )
                 while True:
@@ -272,8 +276,6 @@ def probe(chrome, page_url):
             return facts
         finally:
             stop_process(proc)
-            log_handle.close()
-            Path(log_path).unlink(missing_ok=True)
 
 
 def main():
