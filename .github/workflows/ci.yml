@@ -1,13 +1,9 @@
-# Engine code CI. Lints, type-checks, formats, and tests the engine on main.
-# Scoped to main ONLY: this is walled off from the content pipeline (check.yml
-# on library) and the user fork flow. It is never seeded onto library.
+# Temporary exact-diff validation workflow for upstream PR 142.
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches: [integration/upstream-pr142-base]
 
 permissions:
   contents: read
