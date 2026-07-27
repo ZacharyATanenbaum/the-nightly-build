@@ -3,15 +3,13 @@ name: diagnose-render-probe
 on:
   push:
     branches: [fix/render-probe-http]
-    paths-ignore:
-      - .diagnostics/**
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  diagnose:
+  format:
+    if: github.event.head_commit.message != 'chore: apply render probe formatters'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,38 +22,16 @@ jobs:
           python-version: "3.13"
       - run: npm ci
       - run: uv sync --group figure-capture --group charts
-      - name: Capture diagnostics
+      - name: Format and test
         run: |
-          set +e
-          mkdir -p .diagnostics/render-probe
-          npx prettier --check . > .diagnostics/render-probe/prettier.txt 2>&1
-          echo $? > .diagnostics/render-probe/prettier.exit
-          uv run ruff check . > .diagnostics/render-probe/ruff.txt 2>&1
-          echo $? > .diagnostics/render-probe/ruff.exit
-          uv run ruff format --check . > .diagnostics/render-probe/ruff-format.txt 2>&1
-          echo $? > .diagnostics/render-probe/ruff-format.exit
-          uv run pytest tests/test_render_check.py > .diagnostics/render-probe/pytest.txt 2>&1
-          echo $? > .diagnostics/render-probe/pytest.exit
-          exit 0
-      - name: Comment diagnostics
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          {
-            echo '## Render-probe diagnostics'
-            for name in prettier ruff ruff-format pytest; do
-              echo
-              echo "### $name (exit $(cat .diagnostics/render-probe/$name.exit))"
-              echo '```text'
-              cat ".diagnostics/render-probe/$name.txt"
-              echo '```'
-            done
-          } > /tmp/diagnostics.md
-          gh pr comment 26 --repo "$GITHUB_REPOSITORY" --body-file /tmp/diagnostics.md
-      - name: Commit diagnostics
+          npx prettier --write .github/workflows/check.yml WEB_TASK.md
+          uv run ruff check --fix engine/render_check.py tests/test_render_check.py
+          uv run ruff format engine/render_check.py tests/test_render_check.py
+          uv run pytest tests/test_render_check.py
+      - name: Commit formatter output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .diagnostics/render-probe
-          git commit -m "chore: record render probe diagnostics" || exit 0
+          git add .github/workflows/check.yml WEB_TASK.md engine/render_check.py tests/test_render_check.py
+          git commit -m "chore: apply render probe formatters" || exit 0
           git push
