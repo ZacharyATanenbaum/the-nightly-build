@@ -6,34 +6,13 @@ on:
     branches: [integration/upstream-pr142-base]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  format-upstream-branch:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: agent/chatgpt-scheduled-tasks
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-      - run: npm ci
-      - name: Apply repository Prettier output
-        run: npx prettier --write AGENTS.md WEB_TASK.md assets/chatgpt-scheduled-task-architecture.svg docs/harnesses.md docs/scheduling.md
-      - name: Commit formatter output
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add AGENTS.md WEB_TASK.md assets/chatgpt-scheduled-task-architecture.svg docs/harnesses.md docs/scheduling.md
-          git commit -m "chore: apply upstream PR formatter output" || exit 0
-          git push origin HEAD:agent/chatgpt-scheduled-tasks
-
   python:
     runs-on: ubuntu-latest
     strategy:
