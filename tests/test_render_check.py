@@ -1,3 +1,5 @@
+"""Tests for the fail-closed browser render probe."""
+
 import contextlib
 import pathlib
 import sys
