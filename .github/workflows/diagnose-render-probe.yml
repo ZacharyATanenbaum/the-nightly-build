@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   diagnose:
@@ -36,6 +37,21 @@ jobs:
           uv run pytest tests/test_render_check.py > .diagnostics/render-probe/pytest.txt 2>&1
           echo $? > .diagnostics/render-probe/pytest.exit
           exit 0
+      - name: Comment diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '## Render-probe diagnostics'
+            for name in prettier ruff ruff-format pytest; do
+              echo
+              echo "### $name (exit $(cat .diagnostics/render-probe/$name.exit))"
+              echo '```text'
+              cat ".diagnostics/render-probe/$name.txt"
+              echo '```'
+            done
+          } > /tmp/diagnostics.md
+          gh pr comment 26 --repo "$GITHUB_REPOSITORY" --body-file /tmp/diagnostics.md
       - name: Commit diagnostics
         run: |
           git config user.name "github-actions[bot]"
