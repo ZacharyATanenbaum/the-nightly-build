@@ -281,9 +281,7 @@ def probe(chrome, page_url):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", required=True, help="built site directory")
-    parser.add_argument(
-        "--article", required=True, help="library/<series>/<slug>.html"
-    )
+    parser.add_argument("--article", required=True, help="library/<series>/<slug>.html")
     args = parser.parse_args()
 
     page = os.path.join(args.site, args.article)
@@ -306,11 +304,7 @@ def main():
     failures = []
     if not facts["hasViewport"]:
         failures.append("missing viewport metadata")
-    if (
-        not facts["hasArticleClass"]
-        or not facts["hasReading"]
-        or not facts["hasTitle"]
-    ):
+    if not facts["hasArticleClass"] or not facts["hasReading"] or not facts["hasTitle"]:
         failures.append("required article chrome is missing")
     if facts["scrollWidth"] > VIEWPORT + 2:
         failures.append(

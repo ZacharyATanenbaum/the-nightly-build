@@ -7,7 +7,6 @@ import pytest
 
 import render_check
 
-
 GOOD_FACTS = {
     "hasViewport": True,
     "hasArticleClass": True,

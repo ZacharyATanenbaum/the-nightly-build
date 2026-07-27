@@ -1,2 +1,0 @@
-Would reformat: engine/render_check.py
-1 file would be reformatted, 83 files already formatted
