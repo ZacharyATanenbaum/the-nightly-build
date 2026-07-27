@@ -1,0 +1,4 @@
+Checking formatting...
+[[33mwarn[39m] .github/workflows/check.yml
+[[33mwarn[39m] WEB_TASK.md
+[[33mwarn[39m] Code style issues found in 2 files. Run Prettier with --write to fix.
