@@ -111,7 +111,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: write # required to dispatch publish.yml (Start the press)
     steps:
       # A night's PRs land in one burst, and a sibling merging first moves the
       # base between GitHub's mergeability snapshot and this call ("Base branch
@@ -136,14 +135,8 @@ jobs:
           echo "::error::lost the base race five times; PR #$pr stays open and validated, and a rerun or the next night merges it"
           exit 1
 
-      # Pushes made with GITHUB_TOKEN never fire push-triggered workflows
-      # (recursion guard), so the merge above cannot start the press by
-      # itself, so dispatch it explicitly. Human merges trigger it normally.
-      - name: Start the press
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run publish.yml --repo ${{ github.repository }} --ref library || true
-
+      # web-publish is triggered by this workflow's successful completion. There
+      # is intentionally no second publisher dispatch here.
       - name: Supersede competing PRs for the same slug
         env:
           GH_TOKEN: ${{ github.token }}
