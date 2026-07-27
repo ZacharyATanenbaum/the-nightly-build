@@ -146,7 +146,7 @@ def probe(chrome, page_url):
     with tempfile.TemporaryDirectory(prefix="render-check-profile-") as profile:
         fd, log_path = tempfile.mkstemp(prefix="render-check-chrome-", suffix=".log")
         os.close(fd)
-        log_handle = open(log_path, "w", encoding="utf-8")
+        log_handle = Path(log_path).open("w", encoding="utf-8")
         proc = subprocess.Popen(
             [
                 chrome,
@@ -273,16 +273,15 @@ def probe(chrome, page_url):
         finally:
             stop_process(proc)
             log_handle.close()
-            try:
-                os.unlink(log_path)
-            except FileNotFoundError:
-                pass
+            Path(log_path).unlink(missing_ok=True)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", required=True, help="built site directory")
-    parser.add_argument("--article", required=True, help="library/<series>/<slug>.html")
+    parser.add_argument(
+        "--article", required=True, help="library/<series>/<slug>.html"
+    )
     args = parser.parse_args()
 
     page = os.path.join(args.site, args.article)
@@ -305,7 +304,11 @@ def main():
     failures = []
     if not facts["hasViewport"]:
         failures.append("missing viewport metadata")
-    if not facts["hasArticleClass"] or not facts["hasReading"] or not facts["hasTitle"]:
+    if (
+        not facts["hasArticleClass"]
+        or not facts["hasReading"]
+        or not facts["hasTitle"]
+    ):
         failures.append("required article chrome is missing")
     if facts["scrollWidth"] > VIEWPORT + 2:
         failures.append(
