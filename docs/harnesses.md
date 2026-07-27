@@ -4,7 +4,7 @@ Most night-shift runtimes need a repository checkout, web access, and permission
 to open pull requests. [Scheduling](scheduling.md) defines that contract. The
 ChatGPT Scheduled Task route is the connector-only exception: ChatGPT reads and
 writes GitHub through the connected app while GitHub Actions supply executable
-validation and publishing.
+validation, protected merge, and publishing.
 
 Provider features and prices move quickly. The links below are the source of
 truth. A documented entrypoint means the integration is possible; it does not
@@ -27,15 +27,19 @@ mean this project has stress-tested that harness end to end.
 
 ## Hosted schedulers
 
-Use a hosted scheduler when it can browse the web and create branches and pull
-requests in the fork. Run one task for the whole paper.
+Use a hosted scheduler when it can browse the web, create branches and pull
+requests in the fork, inspect Actions state, and rerun failed jobs. Run one task
+for the whole paper.
 
 - **ChatGPT:** connect the fork through the GitHub app, add `WEB_TASK.md`, and
   create one daily Scheduled Task with the exact prompt in
   [Scheduling](scheduling.md#chatgpt-scheduled-tasks). The ChatGPT task performs
-  all topic selection, research, verification, writing, revision, and PR
-  preparation. GitHub Actions only validate, auto-merge, and publish. Do not
-  install a GitHub Models generation workflow or a second GitHub cron.
+  all topic selection, research, verification, writing, revision, PR
+  preparation, failed-PR repair, and pipeline closure. GitHub Actions only
+  validate, auto-merge, report status, and publish. The task must wait for the
+  current head's check, merge, publisher, and exact published article before it
+  reports success. Do not install a GitHub Models generation workflow, a second
+  GitHub cron, or a duplicate publisher.
 - **Claude Code:** create a Routine and enable full, or suitably scoped,
   network access. It runs in Anthropic's cloud and consumes your plan usage.
 - **Jules:** install its GitHub app, create a Scheduled Task, and select the
@@ -58,9 +62,15 @@ has a non-interactive command or Action. Typical invoke steps are:
 - Pi: `pi -p "<prompt>"` with the chosen model credentials.
 
 This universal Actions path is separate from the ChatGPT connector-only route.
-In the ChatGPT route, no GitHub workflow invokes a model. Keep the repository's
-article check and static publisher, but do not use `actions/ai-inference`,
-GitHub Models, or a GitHub generation schedule.
+In the ChatGPT route, no GitHub workflow invokes a model or repairs prose. Keep
+one repository article check, protected auto-merge, durable reporting, and one
+static publisher, but do not use `actions/ai-inference`, GitHub Models, or a
+GitHub generation schedule.
+
+The browser probe is part of the deterministic gate. It should serve the built
+site over loopback, prove that Chrome reached the exact article, check stable DOM
+and computed-style invariants, and fail closed if the browser, navigation, page
+structure, or stylesheet evidence is unavailable.
 
 Use each provider's current documentation for installation and Action inputs.
 Give the runtime web access, keep credentials in repository secrets, and say
