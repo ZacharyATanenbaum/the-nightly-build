@@ -54,7 +54,7 @@ jobs:
             --base-url "${{ steps.pages.outputs.base_url }}" \
             --repository "${{ github.repository }}"
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with: { path: site }
 
   deploy:
