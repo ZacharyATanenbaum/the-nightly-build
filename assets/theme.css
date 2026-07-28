@@ -1,0 +1,512 @@
+/* --- newspaper.css --- */
+/* The Nightly Build — default theme: "the lamp is always warm".
+   Day: pale sky paper with bronze accents. Night: deep navy sky with amber —
+   the same pigment at two hours. The theme contract: define the color tokens
+   in all four blocks below; the font and radius tokens live in the base block
+   and are inherited. Base tokens are LIGHT — light is the
+   fallback for every degraded case (no JS, no media queries, print). Dark
+   applies only when the system asks (auto) or the reader forces it.
+   Accent contrast is measured, not guessed: bronze #8A5C08 is 5.4:1 on this
+   paper; bright amber fails on light backgrounds (2:1) — keep day accents
+   deep if you customize. */
+:root {
+  /* DAY — the base and universal fallback */
+  --bg: #f4f7fb;
+  --panel: #fcfdff;
+  --wash: #e9eff7;
+  --ink: #161d28;
+  --ink-soft: #4e5866;
+  --faint: #8794a4;
+  --accent: #8a5c08;
+  --accent-2: #935f00;
+  --line: #d9e2ee;
+  --hair: #e7edf5;
+
+  /* Data and status colors. --chart-1..6 is the categorical series order for
+     charts, fixed and CVD-validated — assign in order, never re-sort by rank.
+     --ok/--warn/--bad are semantic text inks (grades, statuses, meters).
+     Contrast is tested: chart tokens hold >=3:1 on --bg and --panel, status
+     tokens >=4.5:1, in every block. */
+  --chart-1: #96640a;
+  --chart-2: #1c5cab;
+  --chart-3: #008a74;
+  --chart-4: #a8332e;
+  --chart-5: #6d28d9;
+  --chart-6: #2e7d4f;
+  --ok: #1e6b3f;
+  --warn: #7d600f;
+  --bad: #b3403a;
+  --serif: "Newsreader", georgia, serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", monospace;
+  --radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* NIGHT: only when the system asks */
+  :root {
+    --bg: #101724;
+    --panel: #161f30;
+    --wash: #1b2537;
+    --ink: #e9e4d8;
+    --ink-soft: #a7a79f;
+    --faint: #6e7280;
+    --accent: #d9a94e;
+    --accent-2: #ddb262;
+    --line: #242f45;
+    --hair: #1c2638;
+    --chart-1: #bf7f00;
+    --chart-2: #5b93d9;
+    --chart-3: #0fa08f;
+    --chart-4: #d95555;
+    --chart-5: #8b7ce8;
+    --chart-6: #61a83f;
+    --ok: #5bbd8b;
+    --warn: #e0b25e;
+    --bad: #e8837d;
+  }
+}
+
+:root[data-mode="light"] {
+  /* manual override; beats the media query by specificity */
+  --bg: #f4f7fb;
+  --panel: #fcfdff;
+  --wash: #e9eff7;
+  --ink: #161d28;
+  --ink-soft: #4e5866;
+  --faint: #8794a4;
+  --accent: #8a5c08;
+  --accent-2: #935f00;
+  --line: #d9e2ee;
+  --hair: #e7edf5;
+  --chart-1: #96640a;
+  --chart-2: #1c5cab;
+  --chart-3: #008a74;
+  --chart-4: #a8332e;
+  --chart-5: #6d28d9;
+  --chart-6: #2e7d4f;
+  --ok: #1e6b3f;
+  --warn: #7d600f;
+  --bad: #b3403a;
+
+  color-scheme: light;
+}
+
+:root[data-mode="dark"] {
+  --bg: #101724;
+  --panel: #161f30;
+  --wash: #1b2537;
+  --ink: #e9e4d8;
+  --ink-soft: #a7a79f;
+  --faint: #6e7280;
+  --accent: #d9a94e;
+  --accent-2: #ddb262;
+  --line: #242f45;
+  --hair: #1c2638;
+  --chart-1: #bf7f00;
+  --chart-2: #5b93d9;
+  --chart-3: #0fa08f;
+  --chart-4: #d95555;
+  --chart-5: #8b7ce8;
+  --chart-6: #61a83f;
+  --ok: #5bbd8b;
+  --warn: #e0b25e;
+  --bad: #e8837d;
+
+  color-scheme: dark;
+}
+
+/* --- furniture.css --- */
+/* Lesson bookends — the two cards that frame every lesson (Why this
+   matters / The takeaway), documented in furniture.md. A primer look:
+   serif italic name over a double accent rule, then a full-bleed wash
+   band naming the reading list, then mono-numbered rows. All colors are
+   theme tokens, so both schemes hold. */
+.nb-bookend {
+  margin: 26px 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 18px 0;
+  overflow: hidden;
+}
+
+.nb-article .nb-bookend .nb-bookend-name {
+  margin: 0 0 2px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 550;
+  font-size: 21px;
+  color: var(--ink);
+}
+
+.nb-bookend-rule {
+  height: 4px;
+  border-top: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  margin: 6px 0 10px;
+}
+
+.nb-bookend-band {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px -18px 0;
+  padding: 6px 18px;
+  background: var(--wash);
+  border-top: 1px solid var(--accent);
+  border-bottom: 1px solid var(--hair);
+}
+
+.nb-bookend-label {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.nb-bookend-note {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.nb-bookend-reading {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  margin: 13px 0 0;
+  padding-bottom: 14px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.nb-bookend-reading dt {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  padding-top: 2px;
+}
+
+.nb-bookend-reading dd {
+  margin: 0;
+}
+
+.nb-bookend-reading a {
+  color: var(--accent-2);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nb-bookend-reading a:hover {
+  color: var(--accent);
+}
+
+/* --- furniture.css --- */
+/* The paper template's bespoke furniture. Only a paper reconstruction opens
+   on the source's own card, quotes it with locators, or closes on a triaged
+   reading map, so these classes live in the template's folder. The build
+   concatenates this file into assets/theme.css whenever the template is
+   present. Documented in furniture.md beside it. */
+
+/* Paper card — the source itself, opening the abstract section: title,
+   authors, a link to the full text, and the abstract verbatim under a
+   hairline. */
+.nb-paper-card {
+  margin: 1.6rem 0;
+  padding: 1rem 1.15rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.nb-paper-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.08rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.nb-paper-meta {
+  margin: 0.25rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.nb-paper-link {
+  display: inline-block;
+  margin-top: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--accent);
+}
+
+.nb-paper-link:hover {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.nb-article .nb-paper-abstract {
+  margin: 0.9rem 0 0;
+  padding: 0.75rem 0 0;
+  border-left: none;
+  border-top: 1px solid var(--hair);
+  font-family: var(--serif);
+  font-size: 0.98rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* The runtime clamps a long abstract behind an ellipsis; a tap expands.
+   Without JS the full abstract shows. */
+.nb-article .nb-paper-abstract.nb-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.nb-article .nb-paper-abstract[role="button"]:not(.nb-clamped) {
+  cursor: pointer;
+}
+
+/* Anchored excerpt — the original's sentence where the argument turns. Reads
+   as quoted source material: a quiet panel behind a serif quote, the locator
+   set small in the mono face so it reads as a coordinate, the gloss under a
+   hairline. */
+/* @deprecated nb-excerpt -> nb-note: retired from the catalog (citation
+   locators carry the anchor now); kept so the published shelf renders */
+.nb-excerpt {
+  margin: 1.6rem 0;
+  padding: 1rem 1.15rem 0.8rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.nb-article .nb-excerpt blockquote {
+  margin: 0;
+  padding: 0;
+  border-left: none;
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.nb-excerpt figcaption {
+  margin-top: 0.7rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--hair);
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.nb-excerpt-loc {
+  margin-right: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Reading map — the read-it-yourself triage of the original. Each entry is a
+   plain block that wraps like prose behind an inline verdict badge, so a long
+   section title breaks across lines instead of forcing the page wide. One
+   accent across the three verdicts; the map directs attention without turning
+   into a traffic light. */
+
+/* @deprecated nb-paper-map -> none: published back-catalog only; the map left
+   the template 2026-07 */
+.nb-paper-map {
+  margin: 1.2rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nb-paper-map li {
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--hair);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.nb-paper-map li:last-child {
+  border-bottom: 1px solid var(--hair);
+}
+
+.nb-map-verdict {
+  display: inline-block;
+  margin-right: 0.45rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: 0.08em;
+}
+
+.nb-map-verdict.nb-read {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.nb-map-verdict.nb-skim {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.nb-map-verdict.nb-skip {
+  color: var(--faint);
+}
+
+.nb-map-target {
+  font-family: var(--sans);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* --- furniture.css --- */
+/* The unbiased template's bespoke furniture. Bespoke to this template: only an
+   unbiased article renders two sides, so these classes live in the template's own
+   folder rather than in a press's shared furniture. The engine concatenates this
+   file into assets/theme.css whenever the unbiased template is present.
+   Documented in furniture.md beside it.
+
+   One contested question argued left vs right. Exactly two sides sit in a
+   two-column grid across an accent spine on wide screens. On a phone they stack,
+   but each keeps its allegiance: the left camp hugs a left rule, the right camp is
+   indented and hugs a right rule, so the reader still feels two sides. Each side
+   is four slots: camp, thesis, argument, champion. One accent, mirrored — never
+   two team colors, so the paper never looks partisan. */
+.nb-divide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 1.8rem 0;
+}
+
+.nb-divide .nb-side {
+  min-width: 0; /* let grid cells shrink below content width instead of overflowing */
+  display: flex;
+  flex-direction: column;
+}
+
+.nb-divide .nb-side-left {
+  padding-right: 1.6rem;
+  border-right: 2px solid var(--accent);
+}
+
+.nb-divide .nb-side-right {
+  padding-left: 1.6rem;
+}
+
+.nb-side-camp {
+  margin: 0 0 0.2rem;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.nb-side-thesis {
+  margin: 0 0 0.75rem;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.18rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.nb-article .nb-side-champion {
+  /* pinned to the side's bottom edge, so the two champions align across the
+     spine on desktop however the arguments differ in length; scoped under
+     .nb-article to outrank nb.css paragraph margins in the cascade */
+  margin-top: auto;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--hair);
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.nb-side-outlet {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@media (width <= 640px) {
+  .nb-divide {
+    grid-template-columns: 1fr;
+    gap: 1.6rem;
+  }
+
+  .nb-divide .nb-side-left {
+    padding-right: 0;
+    padding-left: 1rem;
+    border-right: none;
+    border-left: 3px solid var(--accent);
+  }
+
+  .nb-divide .nb-side-right {
+    margin-left: 1.5rem;
+    padding-right: 1rem;
+    padding-left: 0;
+    border-right: 3px solid var(--accent);
+  }
+
+  .nb-divide .nb-side-right .nb-side-camp {
+    text-align: right;
+  }
+}
+
+/* Desktop: when the argument rides in its wrapper, the four side slots share
+   grid rows across the spine, so the camps, the theses, and the champions'
+   hairlines start aligned however long each argument runs. Articles written
+   before the wrapper keep the bottom-pinned champion above. */
+@media (width >= 641px) {
+  .nb-divide:has(.nb-side-argument) {
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  .nb-divide .nb-side:has(> .nb-side-argument) {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+  }
+
+  .nb-article .nb-side:has(> .nb-side-argument) .nb-side-champion {
+    margin-top: 0.9rem;
+  }
+}

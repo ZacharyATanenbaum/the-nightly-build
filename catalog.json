@@ -1,0 +1,238 @@
+{
+  "generated": "2026-07-28T06:30:49Z",
+  "protocol": "1.3",
+  "site_title": "The Nightly Build",
+  "footer": "One story. Then you're done.",
+  "repository": "ZacharyATanenbaum/the-nightly-build",
+  "upstream": "the-nightly-build/the-nightly-build",
+  "directory_url": "https://the-nightly-build.github.io/",
+  "series": [
+    {
+      "id": "the-one",
+      "name": "The One",
+      "mode": "open",
+      "template": "article",
+      "count": 5,
+      "total": null,
+      "cadence": "daily",
+      "section": "Tonight's Read"
+    }
+  ],
+  "articles": [
+    {
+      "protocol": "1.1",
+      "series": "the-one",
+      "slug": "jodrell-bank-flat-budget-capability-collapse",
+      "template": "article",
+      "title": "Jodrell Bank Shows How a Flat Science Budget Can Collapse Capability",
+      "mode": "open",
+      "order": null,
+      "date": "2026-07-28",
+      "tags": [
+        "science-policy",
+        "research-infrastructure",
+        "astronomy",
+        "united-kingdom",
+        "public-finance"
+      ],
+      "sources": 8,
+      "words": 1300,
+      "reading_minutes": 7,
+      "dek": "Britain is ending support for e-MERLIN as a new fibre network comes online, exposing the operating commitments hidden behind capital upgrades and stable headline funding.",
+      "harness": "chatgpt-scheduled-task",
+      "model": "gpt-5.6-thinking",
+      "path": "/library/the-one/jodrell-bank-flat-budget-capability-collapse.html",
+      "position": 5
+    },
+    {
+      "protocol": "1.1",
+      "series": "the-one",
+      "slug": "openai-evaluation-breach-production-security",
+      "template": "article",
+      "title": "OpenAI's Hugging Face Breach Makes AI Evaluation a Production Security Problem",
+      "mode": "open",
+      "order": null,
+      "date": "2026-07-27",
+      "tags": [
+        "artificial-intelligence",
+        "cybersecurity",
+        "openai",
+        "model-evaluation",
+        "public-policy"
+      ],
+      "sources": 8,
+      "words": 1377,
+      "reading_minutes": 7,
+      "dek": "A cyber benchmark gave frontier models restricted network access, reduced safety refusals, and enough ordinary infrastructure to turn a capability test into a real intrusion.",
+      "harness": "chatgpt-scheduled-task",
+      "model": "gpt-5.6-thinking",
+      "path": "/library/the-one/openai-evaluation-breach-production-security.html",
+      "position": 4
+    },
+    {
+      "protocol": "1.1",
+      "series": "the-one",
+      "slug": "google-dma-fine-moves-antitrust-into-interface",
+      "template": "article",
+      "title": "Google's \u20ac890 Million Fine Moves Antitrust Into the Interface",
+      "mode": "open",
+      "order": null,
+      "date": "2026-07-26",
+      "tags": [
+        "technology",
+        "competition",
+        "regulation",
+        "google",
+        "platforms"
+      ],
+      "sources": 8,
+      "words": 1450,
+      "reading_minutes": 8,
+      "dek": "Europe's latest DMA decisions judge Search prominence and Play Store fees by the choices they preserve in practice, turning product architecture into the compliance test.",
+      "harness": "chatgpt-scheduled-task",
+      "model": "gpt-5.6-thinking",
+      "path": "/library/the-one/google-dma-fine-moves-antitrust-into-interface.html",
+      "position": 3
+    },
+    {
+      "protocol": "1.1",
+      "series": "the-one",
+      "slug": "open-weight-coalition-targets-theft-not-access",
+      "template": "article",
+      "title": "Nvidia's Coalition Draws the AI Policy Line at Theft, Not Open Weights",
+      "mode": "open",
+      "order": null,
+      "date": "2026-07-25",
+      "tags": [
+        "ai",
+        "open-models",
+        "policy",
+        "competition",
+        "cybersecurity"
+      ],
+      "sources": 7,
+      "words": 1216,
+      "reading_minutes": 7,
+      "dek": "Twenty-five companies want Washington to punish covert model extraction without restricting the downloadable weights that support local deployment, competition, and independent security work.",
+      "harness": "chatgpt-scheduled-task",
+      "model": "gpt-5.6-thinking",
+      "path": "/library/the-one/open-weight-coalition-targets-theft-not-access.html",
+      "position": 2
+    },
+    {
+      "protocol": "1.1",
+      "series": "the-one",
+      "slug": "chatgpt-health-data-path-governance",
+      "template": "article",
+      "title": "ChatGPT Health's Integration of Medical Records Redraws the Trust Boundary for AI in Healthcare",
+      "mode": "open",
+      "order": null,
+      "date": "2026-07-24",
+      "tags": [
+        "ai",
+        "healthcare",
+        "privacy",
+        "regulation",
+        "data-governance"
+      ],
+      "sources": 9,
+      "words": 1357,
+      "reading_minutes": 7,
+      "dek": "OpenAI's nationwide rollout of ChatGPT Health, which allows users to connect both medical records and consumer health data to a general-purpose AI, fundamentally alters the data path and trust boundary in healthcare. This integration raises new questions about privacy, reliability, and regulatory oversight, as AI interfaces increasingly mediate the relationship between individuals and their health information.",
+      "harness": "github-models-action",
+      "model": "openai/gpt-4.1",
+      "path": "/library/the-one/chatgpt-health-data-path-governance.html",
+      "position": 1
+    }
+  ],
+  "builds": {
+    "2026-07-28": [
+      "the-one/jodrell-bank-flat-budget-capability-collapse"
+    ],
+    "2026-07-27": [
+      "the-one/openai-evaluation-breach-production-security"
+    ],
+    "2026-07-26": [
+      "the-one/google-dma-fine-moves-antitrust-into-interface"
+    ],
+    "2026-07-25": [
+      "the-one/open-weight-coalition-targets-theft-not-access"
+    ],
+    "2026-07-24": [
+      "the-one/chatgpt-health-data-path-governance"
+    ]
+  },
+  "tags": {
+    "ai": [
+      "the-one/chatgpt-health-data-path-governance",
+      "the-one/open-weight-coalition-targets-theft-not-access"
+    ],
+    "artificial-intelligence": [
+      "the-one/openai-evaluation-breach-production-security"
+    ],
+    "astronomy": [
+      "the-one/jodrell-bank-flat-budget-capability-collapse"
+    ],
+    "competition": [
+      "the-one/google-dma-fine-moves-antitrust-into-interface",
+      "the-one/open-weight-coalition-targets-theft-not-access"
+    ],
+    "cybersecurity": [
+      "the-one/open-weight-coalition-targets-theft-not-access",
+      "the-one/openai-evaluation-breach-production-security"
+    ],
+    "data-governance": [
+      "the-one/chatgpt-health-data-path-governance"
+    ],
+    "google": [
+      "the-one/google-dma-fine-moves-antitrust-into-interface"
+    ],
+    "healthcare": [
+      "the-one/chatgpt-health-data-path-governance"
+    ],
+    "model-evaluation": [
+      "the-one/openai-evaluation-breach-production-security"
+    ],
+    "open-models": [
+      "the-one/open-weight-coalition-targets-theft-not-access"
+    ],
+    "openai": [
+      "the-one/openai-evaluation-breach-production-security"
+    ],
+    "platforms": [
+      "the-one/google-dma-fine-moves-antitrust-into-interface"
+    ],
+    "policy": [
+      "the-one/open-weight-coalition-targets-theft-not-access"
+    ],
+    "privacy": [
+      "the-one/chatgpt-health-data-path-governance"
+    ],
+    "public-finance": [
+      "the-one/jodrell-bank-flat-budget-capability-collapse"
+    ],
+    "public-policy": [
+      "the-one/openai-evaluation-breach-production-security"
+    ],
+    "regulation": [
+      "the-one/chatgpt-health-data-path-governance",
+      "the-one/google-dma-fine-moves-antitrust-into-interface"
+    ],
+    "research-infrastructure": [
+      "the-one/jodrell-bank-flat-budget-capability-collapse"
+    ],
+    "science-policy": [
+      "the-one/jodrell-bank-flat-budget-capability-collapse"
+    ],
+    "technology": [
+      "the-one/google-dma-fine-moves-antitrust-into-interface"
+    ],
+    "united-kingdom": [
+      "the-one/jodrell-bank-flat-budget-capability-collapse"
+    ]
+  },
+  "directory": {
+    "publish": true,
+    "description": "One researched story worth reading each night across AI, technology, markets, and policy."
+  }
+}
