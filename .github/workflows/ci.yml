@@ -7,7 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, integration/upstream-pr142-pages-base]
 
 permissions:
   contents: read
