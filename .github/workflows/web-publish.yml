@@ -1,6 +1,7 @@
-# Trusted publisher for the static gh-pages branch.
+# Trusted publisher for GitHub Pages.
 # Article generation belongs to the ChatGPT Scheduled Task. This workflow runs
-# only after the repository's independent article validator has completed.
+# only after the repository's independent article validator has completed, or
+# when the publisher itself is changed on main.
 name: web-publish
 
 on:
@@ -8,28 +9,37 @@ on:
   workflow_run:
     workflows: [nightly-build-check]
     types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/web-publish.yml
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: web-publish
+  group: pages
   cancel-in-progress: true
 
 jobs:
   publish:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout engine and press
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
       - name: Checkout published library
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: library
           path: library-checkout
@@ -39,33 +49,26 @@ jobs:
           enable-cache: true
           python-version: "3.12"
 
-      - name: Build the site
-        env:
-          PUBLIC_BASE: https://raw.githack.com/${{ github.repository }}/gh-pages/
-        run: |
-          uv run engine/build_site.py \
-            --repo . --library library-checkout --out site \
-            --base-url "$PUBLIC_BASE" \
-            --repository "${{ github.repository }}"
-          touch site/.nojekyll
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
-      - name: Publish the static branch
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Build the site
         run: |
           set -euo pipefail
-          git -C site init
-          git -C site config user.name "github-actions[bot]"
-          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C site checkout -b gh-pages
-          git -C site add -A
-          git -C site commit -m "publish: ${GITHUB_SHA}"
-          git -C site remote add origin \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git -C site push --force origin HEAD:gh-pages
-          published_sha=$(git -C site rev-parse HEAD)
-          {
-            echo "Published commit: $published_sha"
-            echo
-            echo "Site: https://raw.githack.com/${GITHUB_REPOSITORY}/${published_sha}/index.html"
-          } >> "$GITHUB_STEP_SUMMARY"
+          owner=$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          repo=${GITHUB_REPOSITORY#*/}
+          public_base="https://${owner}.github.io/${repo}/"
+          uv run engine/build_site.py \
+            --repo . --library library-checkout --out site \
+            --base-url "$public_base" \
+            --repository "$GITHUB_REPOSITORY"
+          touch site/.nojekyll
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

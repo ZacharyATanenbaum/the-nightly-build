@@ -7,8 +7,8 @@ The Scheduled Task owns subject selection, public-web research, source verificat
 ## Non-negotiable runtime boundary
 
 - Do not invoke or dispatch GitHub Models, `actions/ai-inference`, `web-night-shift`, `bootstrap-first-edition`, or any other GitHub-hosted article generator.
-- GitHub is durable state. Reconstruct every run from `main`, `library`, article pull requests, current check runs, bot comments, `automation-status`, `gh-pages`, and the published catalog.
-- Model output is only a proposal. A successful validator, merge into `library`, successful `web-publish`, and the exact article on `gh-pages` are the machine evidence.
+- GitHub is durable state. Reconstruct every run from `main`, `library`, article pull requests, current check runs, bot comments, `automation-status`, the latest GitHub Pages deployment, and the published catalog.
+- Model output is only a proposal. A successful validator, merge into `library`, successful `web-publish`, and the exact article on the canonical GitHub Pages site are the machine evidence.
 - One strong article or no article. Insufficient evidence means no PR.
 - Opening a PR is not completion.
 
@@ -28,8 +28,8 @@ A normal task run has exactly one successful exit. All of the following must be 
 
 1. `nightly-build-check` completed successfully for the PR's current head SHA.
 2. That validated head was merged into `library`.
-3. The subsequent `web-publish` run completed successfully.
-4. `gh-pages` advanced and contains `library/the-one/<slug>.html` with matching slug and date metadata.
+3. The subsequent `web-publish` run completed successfully and produced a GitHub Pages deployment.
+4. `https://zacharyatanenbaum.github.io/the-nightly-build/library/the-one/<slug>.html` returns the article with matching slug and date metadata.
 
 Do not report success, publication, or a finished run before all four facts are observed.
 
@@ -54,7 +54,7 @@ Do not report success, publication, or a finished run before all four facts are 
 7. Render exactly one file at `library/the-one/<slug>.html` from the article template. Use a lowercase hyphenated slug and add no unrelated file or asset.
 8. Build a complete PR body in the order required by `PROTOCOL.md`: matching `nb-meta`, Task, Process, Voice brief, Research, and Also consulted. The voice brief must study and cite at least three real writers or pieces with `Source:` lines.
 9. Create branch `nb/the-one-<slug>` from the current `library` head, commit the article, and open a ready-for-review PR targeting `library` titled `nb: the-one/<slug> - <Title>`.
-10. Record the PR number, current head SHA, article path, and the pre-publication `gh-pages` head, then enter the closure loop. Do not stop after opening the PR.
+10. Record the PR number, current head SHA, article path, and latest completed Pages deployment before the article merge, then enter the closure loop. Do not stop after opening the PR.
 
 ## Closure and repair loop
 
@@ -64,7 +64,7 @@ Do not report success, publication, or a finished run before all four facts are 
 4. If a job is cancelled, timed out, or fails from a runner, network, checkout, cache, or GitHub API error without an article blocker, rerun the failed job. Make at most two infrastructure reruns per workflow attempt.
 5. After validation succeeds, wait for the PR to merge. If only the automerge job failed transiently, rerun that job. Never manually merge a head whose successful validation cannot be tied to the same SHA.
 6. After merge, wait for `web-publish`. If it fails transiently, inspect its failed job log and rerun the failed job within the same two-rerun bound.
-7. Verify publication independently: the `gh-pages` head must differ from the recorded pre-publication head and the exact article path must exist there with matching metadata. A green publisher without the article is a failure.
+7. Verify publication independently: the successful `web-publish` run must be subsequent to the article merge, and the canonical GitHub Pages article URL must return matching slug and date metadata. A green publisher without the article is a failure.
 8. If the bounded repair or rerun allowance is exhausted, leave the existing PR and branch intact, report `BLOCKED` with the exact run URL and unresolved machine evidence, and let the next scheduled run resume that same state first. This is a failed run, never a successful completion.
 
 ## Hard gates before opening a PR
@@ -81,9 +81,9 @@ Do not report success, publication, or a finished run before all four facts are 
 
 1. `nightly-build-check` validates the untrusted article without model credentials.
 2. Its protected automerge job merges only the validated head into `library`.
-3. `web-publish` is the sole publisher and rebuilds the immutable `gh-pages` branch.
+3. `web-publish` is the sole publisher: it builds a Pages artifact and deploys it with GitHub's official Pages actions.
 4. The Scheduled Task observes and repairs this pipeline; it never bypasses or replaces a gate.
 
 ## Canonical scheduler prompt
 
-> Run the Daily Nightly Build for `ZacharyATanenbaum/the-nightly-build`. Read `WEB_TASK.md` from `main` and follow it exactly. GitHub and the public web are the working state. Do not finish after opening a pull request: wait for validation, repair observed failures on the same PR, verify merge and `web-publish`, and report success only after the exact article exists on `gh-pages`.
+> Run the Daily Nightly Build for `ZacharyATanenbaum/the-nightly-build`. Read `WEB_TASK.md` from `main` and follow it exactly. GitHub and the public web are the working state. Do not finish after opening a pull request: wait for validation, repair observed failures on the same PR, verify merge and `web-publish`, and report success only after the exact article exists on the canonical GitHub Pages site.
