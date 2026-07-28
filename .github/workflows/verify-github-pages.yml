@@ -20,37 +20,42 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo '=== GitHub Pages API ==='
-          api_status=$(curl -sS -o /tmp/pages.json -w '%{http_code}' \
-            -H 'Accept: application/vnd.github+json' \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
-          echo "Pages API status: $api_status"
-          cat /tmp/pages.json
-          echo
+          for attempt in $(seq 1 20); do
+            echo "=== Attempt $attempt ==="
 
-          probe() {
-            name=$1
-            url=$2
-            output=$3
-            status=$(curl -L --retry 6 --retry-delay 5 --connect-timeout 15 \
-              -sS -o "$output" -w '%{http_code}' "$url")
-            echo "$name status: $status"
-            echo "$name final URL: $(curl -L --retry 3 --connect-timeout 15 -sS -o /dev/null -w '%{url_effective}' "$url")"
-            echo "$name title: $(grep -o '<title>[^<]*</title>' "$output" | head -n 1 || true)"
-            if [ "$status" != 200 ]; then
-              echo "$name response body:"
-              head -c 2000 "$output" || true
-              echo
-              return 1
+            api_status=$(curl -sS -o /tmp/pages.json -w '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
+            home_status=$(curl -L --connect-timeout 15 -sS -o /tmp/home.html -w '%{http_code}' "$HOME_URL")
+            article_status=$(curl -L --connect-timeout 15 -sS -o /tmp/article.html -w '%{http_code}' "$ARTICLE_URL")
+
+            echo "Pages API status: $api_status"
+            echo "Homepage status: $home_status"
+            echo "Article status: $article_status"
+
+            if [ "$api_status" = 200 ] \
+              && [ "$home_status" = 200 ] \
+              && [ "$article_status" = 200 ] \
+              && grep -q '"slug": "jodrell-bank-flat-budget-capability-collapse"' /tmp/article.html; then
+              echo "Homepage title: $(grep -o '<title>[^<]*</title>' /tmp/home.html | head -n 1 || true)"
+              echo "Article title: $(grep -o '<title>[^<]*</title>' /tmp/article.html | head -n 1 || true)"
+              echo 'Article metadata marker found.'
+              cat /tmp/pages.json
+              exit 0
             fi
-          }
 
-          echo '=== Public homepage ==='
-          probe HOME "$HOME_URL" /tmp/home.html
+            sleep 15
+          done
 
-          echo '=== Public article ==='
-          probe ARTICLE "$ARTICLE_URL" /tmp/article.html
-          grep -q '"slug": "jodrell-bank-flat-budget-capability-collapse"' /tmp/article.html
-          echo 'Article metadata marker found.'
+          echo '=== Final Pages API response ==='
+          cat /tmp/pages.json || true
+          echo
+          echo '=== Final homepage response ==='
+          head -c 2000 /tmp/home.html || true
+          echo
+          echo '=== Final article response ==='
+          head -c 2000 /tmp/article.html || true
+          echo
+          exit 1
