@@ -26,6 +26,8 @@ Every route needs:
 3. Public-web access for research.
 4. Permission to create work branches and open pull requests targeting
    `library`.
+5. An enabled GitHub Pages site using **GitHub Actions** as its source, plus one
+   successful publisher deployment that has been verified over public HTTP.
 
 Checkout-based runtimes also need `uv`, Python 3.10+, and access to both refs.
 They run `scripts/sync.sh` and the engine locally. Connector-only runtimes do
@@ -49,19 +51,29 @@ is durable state and an independent delivery system, not a second model runtime.
 - drafting, citations, HTML assembly, and bounded revision;
 - branch creation, commits, article-PR creation, and failed-PR repair through
   the connected GitHub app;
-- waiting for the current head's check, merge, publisher, and final published
-  artifact before declaring success.
+- waiting for the current head's check, merge, publisher, and final public
+  GitHub Pages artifact before declaring success.
 
 **GitHub Actions performs only:**
 
 - deterministic article proof and a fail-closed browser render probe;
 - labeling and protected auto-merge after a green required check;
-- exactly one static site, archive, search, and feed publication path;
+- exactly one official GitHub Pages artifact/deploy publication path;
 - durable status reporting that the task can read back.
 
 Do not use GitHub Models, `actions/ai-inference`, or a GitHub generation cron in
 this architecture. Those would create a second scheduler and a second model
 control loop for the same paper.
+
+### Canonical public URL
+
+The reader-facing endpoint is the repository's GitHub Pages site, normally:
+
+`https://<owner>.github.io/<repo>/`
+
+The publisher's Pages deployment output or the Pages API is authoritative. Do
+not substitute RawGitHack, `raw.githubusercontent.com`, a `gh-pages` branch URL,
+an Actions artifact URL, or a workflow-summary link.
 
 ### Completion contract
 
@@ -70,11 +82,15 @@ all of these facts are observed for the same article:
 
 1. The current PR head SHA has a successful required article check.
 2. That validated head has merged into `library`.
-3. The sole configured publisher has completed successfully after the merge.
-4. The exact article exists at the published endpoint with matching series,
-   slug, title, and date metadata.
+3. The sole configured GitHub Pages publisher has completed successfully after
+   the merge.
+4. The Pages API resolves the site with `build_type: workflow`.
+5. The canonical homepage returns HTTP 200.
+6. The exact canonical article URL returns HTTP 200 with matching series, slug,
+   title, and date metadata.
 
-Queued and in-progress checks remain unfinished. Article failures are repaired
+Queued and in-progress checks remain unfinished. A successful workflow with a
+404 homepage or article is a failed publication. Article failures are repaired
 on the same branch from the editor comment and job logs. Infrastructure failures
 may be rerun, but retries remain bounded. If those bounds are exhausted, the
 run reports `BLOCKED`, preserves the PR, and the next task resumes it before
@@ -82,24 +98,34 @@ commissioning anything else.
 
 ### Setup
 
-1. Bootstrap and configure the fork normally. The `library` branch, protected
-   article check, auto-merge, durable status reporting, and sole publisher must
-   already work.
-2. Connect the fork to ChatGPT's GitHub app. Grant the narrow persistent actions
+1. Run `scripts/setup.sh` from an authenticated checkout. It creates the
+   `library` branch, seeds the protected check and publisher, enables GitHub
+   Pages through the repository API when the authenticated user is allowed to do
+   so, authorizes the publishing branch, and configures branch protection.
+2. If the script cannot enable Pages, a repository administrator must set:
+   **Settings → Pages → Build and deployment → Source → GitHub Actions**.
+   The publisher's `actions/configure-pages` step uses `enablement: true`, but a
+   workflow `GITHUB_TOKEN` may still be denied permission to create the initial
+   Pages site.
+3. Confirm the Pages API returns HTTP 200 with `build_type: workflow`. Run the
+   official `nightly-build-publish` workflow and verify the canonical homepage
+   returns HTTP 200. If the library already contains an article, verify that
+   exact article URL also returns HTTP 200 with the expected metadata.
+4. Connect the fork to ChatGPT's GitHub app. Grant the narrow persistent actions
    needed to read repository and Actions state, create branches and commits,
    open or update pull requests, and rerun failed jobs.
-3. Prove the exact write surface before scheduling: create a disposable branch,
+5. Prove the exact write surface before scheduling: create a disposable branch,
    commit a harmless file, open a draft PR, then close the PR and remove or reset
    the branch. A setup agent must not infer write access from read access.
-4. Keep `WEB_TASK.md` on `main`. It is the complete connector-only execution
+6. Keep `WEB_TASK.md` on `main`. It is the complete connector-only execution
    contract and deliberately sends executable proof back to GitHub CI.
-5. Create one daily Scheduled Task for the entire paper with the prompt below.
+7. Create one daily Scheduled Task for the entire paper with the prompt below.
    Do not also create a GitHub generation schedule.
-6. Test the closure path with a disposable or historical article on an isolated
+8. Test the closure path with a disposable or historical article on an isolated
    base. Require deterministic proof, a real browser-render pass, auto-merge,
-   publisher success, and exact published metadata. Do not test by publishing a
-   fake production article.
-7. Run the real task once when the product exposes that control and verify the
+   publisher success, Pages API success, and canonical HTTP 200 responses. Do
+   not test by publishing a fake production article.
+9. Run the real task once when the product exposes that control and verify the
    same completion contract.
 
 ### Scheduled Task prompt
@@ -114,11 +140,11 @@ instruction:
 > follow it exactly. Do not dispatch, invoke, or rely on GitHub Models,
 > `actions/ai-inference`, or any GitHub-hosted article-generation workflow.
 > GitHub Actions are only deterministic validation, protected auto-merge, and
-> static publishing. Do not finish after opening a pull request: wait for the
-> current head's check, repair observed blockers on the same PR, verify merge and
-> publisher success, and report success only after the exact article exists at
-> the published endpoint. If no article is due or the evidence is insufficient,
-> publish nothing.
+> GitHub Pages publishing. Do not finish after opening a pull request: wait for
+> the current head's check, repair observed blockers on the same PR, verify merge
+> and publisher success, and report success only after the canonical GitHub Pages
+> homepage and exact article URL both return HTTP 200 with matching metadata. If
+> no article is due or the evidence is insufficient, publish nothing.
 
 One task runs the whole paper. Adding, pausing, completing, or changing a series
 updates repository state rather than the task. The task reconstructs every run
@@ -136,9 +162,9 @@ and generation surface after the ChatGPT task is active:
 - generation-only selection, research-pack, drafting, or revision entrypoints.
 
 Keep the trusted article check, protected auto-merge path, durable status
-reporting, and one static publisher. Remove or disable duplicate publisher paths
-during migration; a successful article should produce one authoritative
-publication result, not competing green and red workflows.
+reporting, and one official GitHub Pages publisher. Remove or disable duplicate
+publisher paths during migration; a successful article should produce one
+authoritative publication result, not competing green and red workflows.
 
 ### Security boundary
 
