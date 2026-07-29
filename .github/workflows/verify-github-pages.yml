@@ -6,36 +6,65 @@ on:
       - .github/workflows/verify-github-pages.yml
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify Pages API and public URLs
+      - name: Verify publisher and canonical Pages URLs
         env:
           GH_TOKEN: ${{ github.token }}
           HOME_URL: https://zacharyatanenbaum.github.io/the-nightly-build/
-          ARTICLE_URL: https://zacharyatanenbaum.github.io/the-nightly-build/library/the-one/jodrell-bank-flat-budget-capability-collapse.html
+          ARTICLE_URL: https://zacharyatanenbaum.github.io/the-nightly-build/library/the-one/pjm-makes-firm-power-conditional-for-data-centers.html
+          MERGED_AT: "2026-07-29T06:36:52Z"
         run: |
           set -euo pipefail
 
-          api_status=$(curl -sS -o /tmp/pages.json -w '%{http_code}' \
-            -H 'Accept: application/vnd.github+json' \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
-          home_status=$(curl -L -sS -o /tmp/home.html -w '%{http_code}' "$HOME_URL")
-          article_status=$(curl -L -sS -o /tmp/article.html -w '%{http_code}' "$ARTICLE_URL")
+          publisher_ok=false
+          for attempt in $(seq 1 20); do
+            echo "=== Attempt $attempt ==="
+            latest=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow web-publish.yml --limit 1 \
+              --json databaseId,status,conclusion,event,createdAt,url,headSha)
+            echo "$latest"
+            status=$(printf '%s' "$latest" | jq -r '.[0].status // "missing"')
+            conclusion=$(printf '%s' "$latest" | jq -r '.[0].conclusion // "missing"')
+            created=$(printf '%s' "$latest" | jq -r '.[0].createdAt // ""')
+            publisher_url=$(printf '%s' "$latest" | jq -r '.[0].url // ""')
 
-          echo "Pages API status: $api_status"
-          echo "Homepage status: $home_status"
-          echo "Article status: $article_status"
-          echo "Homepage title: $(grep -o '<title>[^<]*</title>' /tmp/home.html | head -n 1 || true)"
-          echo "Article title: $(grep -o '<title>[^<]*</title>' /tmp/article.html | head -n 1 || true)"
-          cat /tmp/pages.json
+            api_status=$(curl -sS -o /tmp/pages.json -w '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
+            home_status=$(curl -L -sS -o /tmp/home.html -w '%{http_code}' "$HOME_URL")
+            article_status=$(curl -L -sS -o /tmp/article.html -w '%{http_code}' "$ARTICLE_URL")
 
-          test "$api_status" = 200
-          test "$home_status" = 200
-          test "$article_status" = 200
-          grep -q 'jodrell-bank-flat-budget-capability-collapse' /tmp/article.html
+            echo "Publisher status: $status / $conclusion"
+            echo "Publisher created: $created"
+            echo "Publisher URL: $publisher_url"
+            echo "Pages API status: $api_status"
+            echo "Homepage status: $home_status"
+            echo "Article status: $article_status"
+
+            if [ "$status" = completed ] \
+              && [ "$conclusion" = success ] \
+              && [[ "$created" > "$MERGED_AT" ]] \
+              && [ "$api_status" = 200 ] \
+              && [ "$home_status" = 200 ] \
+              && [ "$article_status" = 200 ] \
+              && grep -q '"build_type": "workflow"' /tmp/pages.json \
+              && grep -q 'pjm-makes-firm-power-conditional-for-data-centers' /tmp/article.html \
+              && grep -q 'PJM Makes Firm Power Conditional for New Data Centers' /tmp/article.html \
+              && grep -q '2026-07-29' /tmp/article.html; then
+              publisher_ok=true
+              echo "Homepage title: $(grep -o '<title>[^<]*</title>' /tmp/home.html | head -n 1 || true)"
+              echo "Article title: $(grep -o '<title>[^<]*</title>' /tmp/article.html | head -n 1 || true)"
+              echo "Canonical publication verified."
+              break
+            fi
+            sleep 15
+          done
+
+          test "$publisher_ok" = true
