@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minnesota’s Water Attacks Expose a Shared Utility Attack Surface · The One</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/theme.css" />
+    <link rel="stylesheet" href="../../assets/nb.css" />
+    <script defer src="../../assets/nb.js"></script>
+    <script type="application/json" id="nb-meta">
+{
+      "protocol": "1.1",
+      "series": "the-one",
+      "slug": "minnesota-water-attacks-expose-shared-utility-attack-surface",
+      "template": "article",
+      "title": "Minnesota’s Water Attacks Expose a Shared Utility Attack Surface",
+      "mode": "open",
+      "order": null,
+      "date": "2026-07-30",
+      "tags": [
+            "cybersecurity",
+            "critical-infrastructure",
+            "water",
+            "operational-technology",
+            "public-policy"
+      ],
+      "sources": 8,
+      "words": 1546,
+      "reading_minutes": 8,
+      "dek": "More than 30 separately operated water systems were targeted in 48 hours, showing how common remote-control technology can create one attack surface while recovery still depends on local operators.",
+      "harness": "chatgpt-scheduled-task",
+      "model": "gpt-5.6-thinking"
+}
+    </script>
+  </head>
+  <body class="nb-article">
+    <article class="nb-reading">
+      <header>
+        <div class="nb-eyebrow">The One · Tonight's Read</div>
+        <h1 class="nb-title">Minnesota’s Water Attacks Expose a Shared Utility Attack Surface</h1>
+        <p class="nb-dekline">More than 30 separately operated water systems were targeted in 48 hours, showing how common remote-control technology can create one attack surface while recovery still depends on local operators.</p>
+        <div class="nb-byline"><span>8 min read</span><span>2026-07-30</span></div>
+      </header>
+
+      <section data-nb-section="orientation" id="orientation">
+        <h2>Thirty local systems were attacked as one campaign</h2>
+        <p>Minnesota officials said a coordinated cyberattack targeted technology at more than 30 community water systems on July 26 and July 27. The confirmed effects were limited, but they reached operating equipment. In Braham, malicious access shut down computerized controls and briefly stopped the well and treatment plant. Plymouth reported disrupted communications at water towers and lift stations. South St. Paul and Maple Plain said some automated functions were affected while crews maintained service.<sup class="nb-cite"><a href="#s1">1</a></sup><sup class="nb-cite"><a href="#s2">2</a></sup></p>
+        <p>No community had asked residents to change drinking-water use, and the named cities said water quality remained safe. Minnesota IT Services has not formally attributed the attacks. It called them attacks because investigators found unauthorized access with malicious intent, and said their timing, access methods and targets resembled other coordinated incidents against critical infrastructure.<sup class="nb-cite"><a href="#s1">1</a></sup></p>
+        <p>The important unit is therefore larger than any individual water plant. These systems are owned and operated by separate cities, yet an attacker reached across them in two days. Common control equipment, remote-access practices and internet exposure can make decentralized utilities behave like one searchable fleet. The operators remain local. The attack surface does not.</p>
+      </section>
+
+      <section data-nb-section="common-equipment-is-searchable" id="common-equipment-is-searchable">
+        <h2>Common control equipment makes separate utilities searchable</h2>
+        <p>Water plants use operational technology to measure tank levels, run pumps, dose treatment chemicals and display alarms. Programmable logic controllers execute those physical instructions. Supervisory control and data acquisition systems give operators a broader view and often permit remote management. Connecting those tools to cellular networks or the public internet can lower staffing and travel costs, especially for small systems with distributed wells, towers and lift stations. It also gives outside scanners a way to find many similar devices without knowing which municipality owns them.</p>
+        <p>Federal agencies had already warned that Iranian-affiliated actors were targeting internet-exposed controllers across U.S. critical infrastructure. Their joint advisory described malicious interactions with controller project files and manipulation of data on human-machine-interface and SCADA displays, with operational disruption and financial loss. A July update expanded the affected equipment beyond one manufacturer to products from Schneider Electric, Siemens and potentially others.<sup class="nb-cite"><a href="#s3">3</a></sup><sup class="nb-cite"><a href="#s4">4</a></sup></p>
+        <p>That warning supplies a plausible mechanism, not attribution for Minnesota. Investigators have not disclosed the devices, credentials or remote-access products used in the attacks. The same pattern could arise from default passwords, reused vendor credentials, exposed engineering interfaces or a shared service provider. The common fact is narrower: attackers found a repeatable path into technology used by numerous utilities. A statewide inventory of reachable devices and remote-management routes would therefore reveal more about risk than thirty separate city vulnerability reports.</p>
+      </section>
+
+      <section data-nb-section="manual-operation-contained-harm" id="manual-operation-contained-harm">
+        <h2>Manual operation contained the physical harm</h2>
+        <p>The first effective safety control was operational. Plymouth said the problem was limited to equipment connected through cellular communications and crews continued through manual procedures. South St. Paul and Maple Plain also maintained normal operations after automated controls were affected. Braham’s plant returned to service in less than two hours, with no reported physical damage or water-quality impact.<sup class="nb-cite"><a href="#s2">2</a></sup></p>
+        <p>This distinction prevents the incident from becoming a generic contamination story. A controller compromise can stop a pump, falsify a display or alter process logic. It does not automatically place a contaminant in the distribution system. Water safety also depends on treatment barriers, sampling, operator observation and the physical time required for process changes to reach customers. Those layers remained intact in the publicly identified cases.</p>
+        <p>Manual fallback is still a finite resource. A short interruption at one plant can be handled by an experienced crew. Simultaneous alarms across wells, towers, wastewater stations and communications links consume attention quickly. Federal reporting described a separate intrusion in which attackers changed controller logic to disable shutdowns and alarms, allowing unsafe conditions without notifying operators. That is the harder case: the interface appears normal while the process is not.<sup class="nb-cite"><a href="#s4">4</a></sup></p>
+        <p>The Minnesota attacks show why utilities need a tested way to operate without trusted automation, not merely backups of the automation itself. Operators need local gauges, known-safe controller configurations, independent water-quality checks and authority to isolate remote links. The value of those controls is measurable in minutes of continued service, not in a compliance score.</p>
+      </section>
+
+      <section data-nb-section="annual-assessments-found-a-limit" id="annual-assessments-found-a-limit">
+        <h2>Annual assessments did not reveal the shared failure</h2>
+        <p>Minnesota already imposes a broader cybersecurity requirement than many states. Since 2024, every community water system using operational technology such as SCADA must conduct an annual cybersecurity assessment and certify completion to the Department of Health. Systems may perform the review themselves or hire a third party. During sanitary surveys, state engineers ask whether the assessment was completed and discuss issues that could affect safe drinking water.<sup class="nb-cite"><a href="#s5">5</a></sup></p>
+        <p>The rule creates a recurring local check, but it deliberately keeps the findings with the utility. The Department of Health requires a certification form, not a copy of the assessment, because the detailed vulnerabilities are confidential. Failure to complete the assessment is a sanitary-survey finding. The state can verify that a review occurred without holding a common dataset of vendor versions, exposed services, remote-access designs or unresolved weaknesses.<sup class="nb-cite"><a href="#s5">5</a></sup><sup class="nb-cite"><a href="#s6">6</a></sup></p>
+        <p>That design protects sensitive plant information and avoids creating a central map for attackers. It also makes correlated risk harder to see. Thirty utilities can each satisfy the annual requirement while retaining the same exposed product, contractor account or network pattern. A checklist measures whether each owner looked. A coordinated campaign tests whether the state can compare what all of them found.</p>
+        <p>The strongest counter-reading is that no assessment program can guarantee prevention. The attacks were contained, and the requirement may have helped operators recognize incidents and use manual procedures. That is credible. The policy question is whether annual certification should now be supplemented with a narrow, protected inventory of common external exposures and critical vendors. The state does not need every plant diagram to discover that the same remote-management interface is reachable in dozens of cities.</p>
+      </section>
+
+      <section data-nb-section="reporting-made-the-campaign-visible" id="reporting-made-the-campaign-visible">
+        <h2>State reporting made the campaign visible</h2>
+        <p>Minnesota’s incident-reporting law requires covered public entities to report qualifying cyber incidents within 72 hours. Its guidance specifically includes successful attacks on operational-technology networks, controllers or human-machine interfaces that cause disruption. MNIT says it combines and anonymizes reports before sharing threat information, so one city’s indicators can help another defend itself without publicly naming the victim.<sup class="nb-cite"><a href="#s7">7</a></sup></p>
+        <p>The state built that system to solve a coordination problem. Its first annual report described a whole-of-state model in which local governments, Tribal Nations and critical-infrastructure partners share tools, intelligence and communication rather than each duplicating enterprise-grade expertise. When the water attacks arrived, MNIT activated statewide incident response and worked with health, federal and private partners across the affected communities.<sup class="nb-cite"><a href="#s8">8</a></sup><sup class="nb-cite"><a href="#s1">1</a></sup></p>
+        <p>This is the right direction, but the timing matters. A 72-hour reporting window is designed for investigation and accountability. An attacker moving across comparable devices in 48 hours requires faster operational sharing: device fingerprints, source addresses, compromised accounts, changed logic and safe isolation steps. The reporting system becomes a defense only when the first confirmed incident can alter controls at systems that have not yet been hit.</p>
+        <p>Central coordination should stop short of centralized plant operation. A statewide security team can monitor internet exposure, distribute indicators, negotiate vendor response and provide incident specialists. Local operators should retain the ability to disconnect remote access and run their physical systems manually. The Minnesota response worked because both layers existed. The next improvement is to make the shared layer act before the thirtieth target.</p>
+      </section>
+
+      <section data-nb-section="publish-the-common-path" id="publish-the-common-path">
+        <h2>The next test is whether Minnesota identifies the common path</h2>
+        <p>This incident survived the cut because it tested a policy architecture, not only a firewall. Minnesota had annual utility assessments, mandatory incident reporting and a whole-of-state response model before the attacks. The campaign exposed the seam between them: local assessments can remain isolated while attackers exploit a pattern that crosses city boundaries.</p>
+        <p>The most useful public finding will not be a confident country label. It will be a bounded account of what repeated. Did the systems expose the same controller family, cellular gateway, engineering software, contractor credential or configuration? How quickly did the first report produce indicators for other utilities? Which manual procedures preserved service, and which systems could not isolate automation without losing visibility?</p>
+        <p>Answers can be published without releasing plant diagrams or exploit details. They can drive a protected statewide inventory, minimum remote-access controls, vendor-specific remediation and funding for small utilities that cannot maintain industrial cybersecurity teams. They can also test whether the annual assessment asks the right questions. If no common technical path existed, the state should say that too; coordination may have occurred at the attacker’s campaign level rather than through a shared vulnerability.</p>
+        <p>The next observable evidence is Minnesota’s incident review and any resulting change to assessment, reporting or funding rules. Until then, the defensible conclusion is limited. More than 30 locally operated systems were reached as one campaign, while local crews and statewide coordination prevented a drinking-water emergency. The response contained the event. The review must explain why the attack surface was broad enough to create it.<sup class="nb-cite"><a href="#s1">1</a></sup><sup class="nb-cite"><a href="#s5">5</a></sup><sup class="nb-cite"><a href="#s7">7</a></sup></p>
+      </section>
+
+      <section class="nb-sources" data-nb-section="sources" id="sources">
+        <h2>Sources</h2>
+        <ol>
+          <li id="s1">
+            <a data-nb-source data-nb-kind="secondary" href="https://www.reuters.com/legal/litigation/minnesota-it-officials-disclose-coordinated-cyberattack-more-than-30-local-water-2026-07-28/">Reuters · Minnesota IT officials disclose coordinated cyberattack at more than 30 local water systems</a>
+          </li>
+          <li id="s2">
+            <a data-nb-source data-nb-kind="secondary" href="https://www.cbsnews.com/minnesota/news/cyberattack-malware-braham-water-plant-outage/">CBS Minnesota · Coordinated cyberattack targeted 30-plus Minnesota water systems in 48 hours</a>
+          </li>
+          <li id="s3">
+            <a data-nb-source data-nb-kind="primary" href="https://www.ic3.gov/CSA/2026/260407.pdf">FBI, CISA, NSA, EPA, DOE and U.S. Cyber Command · Iranian-Affiliated Cyber Actors Exploit Programmable Logic Controllers Across US Critical Infrastructure</a>
+          </li>
+          <li id="s4">
+            <a data-nb-source data-nb-kind="secondary" href="https://techcrunch.com/2026/07/23/us-government-says-iran-linked-hackers-are-disrupting-american-water-and-energy-providers/">TechCrunch · US government says Iran-linked hackers are disrupting American water and energy providers</a>
+          </li>
+          <li id="s5">
+            <a data-nb-source data-nb-kind="primary" href="https://www.health.state.mn.us/communities/environment/emergency/water/securityassess.html">Minnesota Department of Health · Assessing Security of Public Water Systems</a>
+          </li>
+          <li id="s6">
+            <a data-nb-source data-nb-kind="primary" href="https://www.health.state.mn.us/communities/environment/water/sansurvinfo.html">Minnesota Department of Health · Sanitary Survey Information for Public Water Systems</a>
+          </li>
+          <li id="s7">
+            <a data-nb-source data-nb-kind="primary" href="https://mn.gov/mnit/about-mnit/security/cir/">Minnesota IT Services · Cybersecurity Incident Reporting</a>
+          </li>
+          <li id="s8">
+            <a data-nb-source data-nb-kind="primary" href="https://mn.gov/mnit/media/blog/?id=38-721034">Minnesota IT Services · Inaugural Cybersecurity Incident Reporting Law report release</a>
+          </li>
+        </ol>
+      </section>
+    </article>
+  </body>
+</html>
