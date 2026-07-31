@@ -17,8 +17,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HOME_URL: https://zacharyatanenbaum.github.io/the-nightly-build/
-          ARTICLE_URL: https://zacharyatanenbaum.github.io/the-nightly-build/library/the-one/minnesota-water-attacks-expose-shared-utility-attack-surface.html
-          MERGED_AT: "2026-07-30T06:30:11Z"
+          ARTICLE_URL: https://zacharyatanenbaum.github.io/the-nightly-build/library/the-one/warsh-lets-bond-markets-tighten-before-the-fed-does.html
+          MERGED_AT: "2026-07-31T06:29:51Z"
         run: |
           set -euo pipefail
 
@@ -55,9 +55,9 @@ jobs:
               && [ "$home_status" = 200 ] \
               && [ "$article_status" = 200 ] \
               && grep -q '"build_type": "workflow"' /tmp/pages.json \
-              && grep -q 'minnesota-water-attacks-expose-shared-utility-attack-surface' /tmp/article.html \
-              && grep -q 'Minnesota’s Water Attacks Expose a Shared Utility Attack Surface' /tmp/article.html \
-              && grep -q '2026-07-30' /tmp/article.html; then
+              && grep -q 'warsh-lets-bond-markets-tighten-before-the-fed-does' /tmp/article.html \
+              && grep -q 'Warsh Lets Bond Markets Tighten Before the Fed Does' /tmp/article.html \
+              && grep -q '2026-07-31' /tmp/article.html; then
               publisher_ok=true
               echo "Homepage title: $(grep -o '<title>[^<]*</title>' /tmp/home.html | head -n 1 || true)"
               echo "Article title: $(grep -o '<title>[^<]*</title>' /tmp/article.html | head -n 1 || true)"
