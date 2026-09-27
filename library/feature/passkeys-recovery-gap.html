@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account recovery can bypass a passkey · Feature</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../../assets/theme.css" />
+    <link rel="stylesheet" href="../../assets/nb.css" />
+    <script defer src="../../assets/nb.js"></script>
+    <script type="application/json" id="nb-meta">
+      {
+        "protocol": "1.1",
+        "series": "feature",
+        "slug": "passkeys-recovery-gap",
+        "template": "article",
+        "title": "Account recovery can bypass a passkey",
+        "mode": "open",
+        "order": null,
+        "date": "2026-09-27",
+        "tags": [],
+        "sources": 6,
+        "words": 1196,
+        "reading_minutes": 5,
+        "dek": "After a device is lost, the website and the credential provider make separate decisions about who regains access.",
+        "harness": "Codex",
+        "model": "GPT-6"
+      }
+    </script>
+  </head>
+  <body class="nb-article">
+    <article class="nb-reading">
+      <header>
+        <div class="nb-eyebrow">Feature</div>
+        <h1 class="nb-title">Account recovery can bypass a passkey</h1>
+        <p class="nb-dekline">After a device is lost, the website and the credential provider make separate decisions about who regains access.</p>
+        <div class="nb-byline"><span>5 min read</span><span>2026-09-27</span></div>
+      </header>
+
+      <section data-nb-section="orientation" id="orientation">
+        <h2>A fake page cannot borrow the right domain</h2>
+        <p>A passkey gives a website a public key and keeps the matching private key with an authenticator. At sign-in, the website sends a fresh challenge and verifies a signature. The WebAuthn standard binds that credential to the website's relying-party identifier, usually its domain. A lookalike page on another domain cannot ask the browser to use the same credential for its own sign-in. The website must also check the origin attached to the response.<sup class="nb-cite"><a href="#s1">1</a></sup></p>
+        <p>That is an improvement over a password or a one-time code that a person can type into a convincing imitation. NIST describes a properly configured synced passkey as phishing-resistant for exactly this reason: a false page cannot capture an authenticator response and reuse it at the real site.<sup class="nb-cite"><a href="#s2">2</a></sup> The protection applies to a sign-in ceremony. It does not tell a website how to decide that somebody who no longer has a passkey owns the account.</p>
+      </section>
+
+      <section data-nb-section="what-the-key-proves" id="what-the-key-proves">
+        <h2>The signed challenge proves possession of a key</h2>
+        <p>During registration, the service stores a public key. During sign-in, an authenticator signs the service's challenge with the private key, and the service checks the signature against its stored public key. Microsoft describes this sequence in its passkey implementation guide.<sup class="nb-cite"><a href="#s3">3</a></sup> A local device unlock can authorize that signature without sending a fingerprint or device PIN to the service. The browser and authenticator enforce the domain boundary; the service enforces the account policy around the result.</p>
+        <p>A service may keep a password, an email sign-in link, another passkey, or an assisted recovery path alongside the new credential. Those paths are separate from the signed WebAuthn challenge. Adding a passkey improves the path that uses it; it does not automatically retire every older route into the account. Google's design guide tells services to establish a recovery method when a passkey-only account is created.<sup class="nb-cite"><a href="#s4">4</a></sup></p>
+      </section>
+
+      <section data-nb-section="two-recovery-authorities" id="two-recovery-authorities">
+        <h2>Losing a device exposes two recovery authorities</h2>
+        <p>Consider a person who loses the phone on which a passkey was first created. The passkey may have been synced to other devices. In that case, the credential provider has a process for restoring access to the encrypted key material. Apple says iCloud Keychain syncs passkeys with end-to-end encryption and includes a recovery service for people who cannot reach their devices.<sup class="nb-cite"><a href="#s5">5</a></sup> A restored key can then perform the ordinary sign-in ceremony.</p>
+        <p>If the person cannot recover a usable passkey, the website faces a different question: what evidence will let it bind a new credential to the existing account? FIDO's consumer deployment guidance lists other passkeys, a password with a texted code, and an email link among the alternative methods sites use. It warns that a weak recovery process can let an attacker compromise the account even when passkey sign-in is strong.<sup class="nb-cite"><a href="#s6">6</a></sup></p>
+        <table class="nb-table">
+          <caption>Two routes after a lost device, with different decision makers.<sup class="nb-cite"><a href="#s4">4</a></sup><sup class="nb-cite"><a href="#s5">5</a></sup><sup class="nb-cite"><a href="#s6">6</a></sup></caption>
+          <thead><tr><th>What is restored</th><th>Who decides</th><th class="txt">Result</th></tr></thead>
+          <tbody>
+            <tr><td>Synced passkey</td><td>Credential provider</td><td class="txt">The original private key becomes available on a device again.</td></tr>
+            <tr><td>Website account</td><td>Website</td><td class="txt">A claimant may register a new credential or use a separate sign-in method.</td></tr>
+          </tbody>
+        </table>
+        <p>NIST treats recovery of a synced credential store as its own security concern. Its guidance requires access controls for the sync service, encryption of stored keys, and strong authentication for access to those keys. The threat table separately names unauthorized access to the sync service and its recovery process.<sup class="nb-cite"><a href="#s2">2</a></sup> Encryption protects stored key material, while the provider's recovery policy decides who can regain the ability to use it.</p>
+      </section>
+
+      <section data-nb-section="fallback-policy" id="fallback-policy">
+        <h2>The fallback determines what an attacker can try next</h2>
+        <p>Google advises services to offer an email, phone, or federated-login recovery method when a new account starts with a passkey. That choice can prevent permanent lockout. It also gives the website another way to recognize a claimant, with the security properties of the chosen method rather than those of WebAuthn.<sup class="nb-cite"><a href="#s4">4</a></sup> An email link, for example, depends on control of the mailbox and on the site's handling of the link. The passkey cannot impose its domain-bound signature on a recovery flow that never asks for the key.</p>
+        <p>Microsoft's ASP.NET Core Identity guidance makes the trade-off visible. Its default application template requires a backup method. For applications that allow only passkeys at sign-in, it suggests recovery codes, email-based recovery, multiple passkeys, and monitoring whether a key is backed up.<sup class="nb-cite"><a href="#s3">3</a></sup> None is a universal prescription: the service must decide which losses it needs to survive and what assurance it needs before enrolling a replacement key.</p>
+        <p>FIDO's document describes a maintenance detail that disappears from a simple passwordless promise. Deleting a credential from a website's account record does not automatically delete the private key from a device or passkey provider. The old key will ordinarily fail at that website after server-side deletion, but the mismatch remains visible to the person managing credentials.<sup class="nb-cite"><a href="#s6">6</a></sup> Credential storage and website account management are related systems with separate records.</p>
+      </section>
+
+      <section data-nb-section="recovery-standard" id="recovery-standard">
+        <h2>Higher assurance changes the recovery proof</h2>
+        <p>NIST's federal identity standard provides a more demanding model for accounts at Authentication Assurance Level 2. Its recovery options are two codes obtained through different methods, one code plus a still-bound authenticator, or repeated identity proofing for an account that was proofed before. It also requires a notification when recovery occurs.<sup class="nb-cite"><a href="#s2">2</a></sup> These are federal assurance rules, not a claim about the defaults of consumer websites. They show how a service can preserve stronger evidence of ownership when the ordinary authenticator is gone.</p>
+        <p>FIDO notes that some services cannot use a convenient alternate login because a passkey is required for particular features. Those services may need robust identity proofing to recover access. Requiring more evidence can make legitimate recovery slower, while accepting a weaker method gives an attacker another route to test.<sup class="nb-cite"><a href="#s6">6</a></sup> The documents do not establish which option yields fewer compromises across all services. They establish that the recovery method must be evaluated as part of the account's security design.</p>
+      </section>
+
+      <section data-nb-section="account-test" id="account-test">
+        <h2>Ask who can restore the key and who can replace it</h2>
+        <p>A passkey's domain binding answers one question: can this authenticator sign in to this website? Recovery answers two others. Who can restore the key from its provider, and who can persuade the website to accept a replacement? Apple's keychain design addresses the first route; Google's, Microsoft's and FIDO's implementation guidance address the second.<sup class="nb-cite"><a href="#s5">5</a></sup><sup class="nb-cite"><a href="#s4">4</a></sup><sup class="nb-cite"><a href="#s3">3</a></sup><sup class="nb-cite"><a href="#s6">6</a></sup></p>
+        <p>Suppose a website lets a claimant use an email link to enroll a new passkey. If an attacker controls that mailbox, the attacker may obtain a new credential without possessing the old one; the old key's domain check never runs in that sequence. A site that demands a second existing authenticator or stronger recovery evidence imposes a different test. The passkey protects the sign-in attempt. The website's recovery rule decides who may replace it.<sup class="nb-cite"><a href="#s4">4</a></sup><sup class="nb-cite"><a href="#s6">6</a></sup><sup class="nb-cite"><a href="#s2">2</a></sup></p>
+      </section>
+
+      <section class="nb-sources" data-nb-section="sources" id="sources">
+        <h2>Sources</h2>
+        <ol>
+          <li id="s1"><a data-nb-source data-nb-kind="primary" data-nb-locator="Relying Party Identifier; section 13.4.9" href="https://www.w3.org/TR/webauthn-3/">W3C · Web Authentication Level 3</a></li>
+          <li id="s2"><a data-nb-source data-nb-kind="primary" data-nb-locator="section 4.2; Appendix B, Table 5" href="https://pages.nist.gov/800-63-4/sp800-63b.html">NIST · SP 800-63B-4</a></li>
+          <li id="s3"><a data-nb-source data-nb-kind="primary" data-nb-locator="Attestation; Assertion; Account recovery" href="https://learn.microsoft.com/en-us/aspnet/core/security/authentication/passkeys/?view=aspnetcore-10.0">Microsoft · WebAuthn passkeys in ASP.NET Core Identity</a></li>
+          <li id="s4"><a data-nb-source data-nb-kind="primary" data-nb-locator="Creating new accounts with passkeys; Have an email or phone fallback" href="https://developers.google.com/identity/passkeys/ux/user-journeys">Google · Passkeys user journeys</a></li>
+          <li id="s5"><a data-nb-source data-nb-kind="primary" data-nb-locator="iCloud Keychain security overview" href="https://support.apple.com/en-ca/guide/security/sec1c89c6f3b/web">Apple · iCloud Keychain security overview</a></li>
+          <li id="s6"><a data-nb-source data-nb-kind="primary" data-nb-locator="sections 5.4 and 5.5" href="https://fidoalliance.org/wp-content/uploads/2024/05/Synced-Passkey-Deployment_-Emerging-Practices-for-Consumer-Use-Cases_2024-May-31.pdf">FIDO Alliance · Synced passkey deployment practices</a></li>
+        </ol>
+      </section>
+    </article>
+  </body>
+</html>
