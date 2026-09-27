@@ -1,0 +1,161 @@
+# The editor: validates every PR targeting the library branch, auto-merges clean ones.
+# SECURITY: trigger is pull_request (never pull_request_target); the validate job runs
+# with read-only contents and no secrets against untrusted diffs. The merge job only
+# uses GITHUB_TOKEN and only fires after the check passes.
+# PLACEMENT: GitHub fires pull_request triggers only from workflow files present on
+# the PR's base branch, so nb setup seeds the first copy and nb sync keeps
+# it current. Keep this a pure trigger: engine logic comes from main at run time.
+name: nightly-build-check
+
+on:
+  pull_request:
+    branches: [library]
+    # ready_for_review is not in the default set; without it a held draft
+    # marked ready would never reach the automerge job.
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      new_article: ${{ steps.proof.outputs.new_article }}
+      sync: ${{ steps.proof.outputs.sync }}
+    steps:
+      - name: Checkout PR head (full history for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout engine from main (never trust engine code from the PR)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _main
+
+      - name: Checkout published library state (base)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: _library
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      # The curation gate: a deletion-only PR is legitimate retraction when and
+      # only when the repository owner authored it. The proof checks the shape;
+      # this expression checks the author. Deletions never auto-merge.
+      - name: Run the proof
+        id: proof
+        env:
+          CURATION: ${{ github.event.pull_request.user.login == github.repository_owner && '--deletions-by-owner' || '' }}
+        run: |
+          set +e
+          _main/nb check --pr $CURATION \
+            --repo . --main _main \
+            --base "origin/${{ github.base_ref }}" \
+            --head "HEAD" \
+            --library _library > /tmp/proof.txt
+          code=$?
+          cat /tmp/proof.txt
+          echo "new_article=$(_main/nb ci new-article --diff-base origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
+          echo "sync=$(_main/nb ci sync --repo _main --diff-base origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      # The render probe sees what the file-level proof cannot: the page as a
+      # browser draws it. Skips itself for curation PRs (no page to build).
+      - name: Render probe
+        run: |
+          path=$(_main/nb ci article-path --diff-base "origin/${{ github.base_ref }}")
+          if [ -z "$path" ]; then echo "no publishable article; probe skipped"; exit 0; fi
+          _main/nb build --repo _main --library . --out /tmp/site
+          _main/nb render-check --site /tmp/site --article "$path" | tee -a /tmp/proof.txt
+
+      - name: Comment findings on the PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '## The editor'
+            echo '```'
+            cat /tmp/proof.txt
+            echo '```'
+          } > /tmp/comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/comment.md || true
+
+      - name: Label outcome
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if grep -Eq '^verdict: (PUBLISHABLE|SYNC)' /tmp/proof.txt; then
+            gh pr edit ${{ github.event.pull_request.number }} --remove-label nb-invalid --add-label nb-approved || true
+            if grep -q '^WARN:  [1-9]' /tmp/proof.txt; then
+              gh pr edit ${{ github.event.pull_request.number }} --add-label nb-warnings || true
+            fi
+          else
+            gh pr edit ${{ github.event.pull_request.number }} --add-label nb-invalid || true
+          fi
+
+  automerge:
+    needs: validate
+    if: >-
+      github.event.pull_request.draft == false
+      && (needs.validate.outputs.new_article == 'true' || needs.validate.outputs.sync == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write # required to dispatch publish.yml (Start the press)
+    steps:
+      # A night's PRs land in one burst, and a sibling merging first moves the
+      # base between GitHub's mergeability snapshot and this call ("Base branch
+      # was modified") — a transient, never a verdict on the article. Retry
+      # with jittered backoff: each successful merge removes a contender, so N
+      # racing PRs converge within N rounds. Any other refusal fails fast so
+      # retries never mask a real problem. Exhausted retries still self-heal:
+      # the PR stays open and validated, and the next night supersedes it.
+      - name: Squash-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr=${{ github.event.pull_request.number }}
+          for attempt in 1 2 3 4 5; do
+            err=$(gh pr merge "$pr" --squash --repo ${{ github.repository }} 2>&1) && exit 0
+            echo "$err"
+            case "$err" in
+              *"Base branch was modified"*) sleep $((attempt * 11 + RANDOM % 7)) ;;
+              *) exit 1 ;;
+            esac
+          done
+          echo "::error::lost the base race five times; PR #$pr stays open and validated, and a rerun or the next night merges it"
+          exit 1
+
+      # Pushes made with GITHUB_TOKEN never fire push-triggered workflows
+      # (recursion guard), so the merge above cannot start the press by
+      # itself, so dispatch it explicitly. The deploy runs on the main ref,
+      # which the Pages environment allows without a branch policy; a human
+      # merge fires publish.yml's push trigger on library, which relays here.
+      - name: Start the press
+        if: needs.validate.outputs.new_article == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish.yml --repo ${{ github.repository }} --ref main || true
+
+      - name: Supersede competing PRs for the same slug
+        if: needs.validate.outputs.new_article == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          path=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files -q '.files[0].path')
+          for n in $(gh pr list --repo ${{ github.repository }} --base library --state open --json number,files \
+                     -q ".[] | select(.files[].path == \"$path\") | .number"); do
+            gh pr close "$n" --repo ${{ github.repository }} \
+              --comment "Superseded by #${{ github.event.pull_request.number }} (same article: \`$path\`)." || true
+          done

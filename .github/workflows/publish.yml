@@ -1,0 +1,88 @@
+# The press run: rebuild the site from library and deploy Pages.
+# SECURITY: executable logic (builder, assets) is ALWAYS checked out from main
+# (§1 invariant 1). Library content is data, never code.
+# The built site is served from the Pages artifact; it is NOT committed back to
+# the library branch, so a protected library never blocks the deploy.
+# PLACEMENT: the build and deploy run on the main ref, which the github-pages
+# environment allows without a branch policy. GitHub fires push triggers only
+# from workflow files present on the pushed branch, so this file is also seeded
+# onto library (nb setup, then nb sync), where a push runs only the relay job
+# that dispatches the same file on main. Auto-merge dispatches it on main
+# directly (GITHUB_TOKEN pushes fire no events). Keep this a pure trigger:
+# engine logic comes from main at run time.
+name: nightly-build-publish
+
+on:
+  push:
+    branches: [library]
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-build-publish
+  cancel-in-progress: true
+
+jobs:
+  relay:
+    if: github.ref_name == 'library' && !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Hand the run to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish.yml --repo ${{ github.repository }} --ref main
+
+  build:
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout library (content)
+        uses: actions/checkout@v4
+        with:
+          ref: library
+          fetch-depth: 0 # full history: revision merges date the feed's <updated>
+
+      - name: Checkout engine + templates from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _main
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Build the site
+        run: |
+          _main/nb build \
+            --repo _main --library . --out site \
+            --base-url "${{ steps.pages.outputs.base_url }}" \
+            --repository "${{ github.repository }}"
+
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
