@@ -1,0 +1,3 @@
+# Portable role guidance. See docs/reference/production.md.
+profile: balanced
+required: false

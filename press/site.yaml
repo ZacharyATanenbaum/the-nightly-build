@@ -1,0 +1,4 @@
+title: "The Nightly Build"
+theme: engine/assets/themes/newspaper.css   # or press/themes/<yours>.css
+appearance: auto   # auto | light | dark
+front: compact     # compact | comfortable (deks on front-page story cells)

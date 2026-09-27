@@ -1,0 +1,14 @@
+# One brief a day on the subjects in prompt.md. Rolling: the date is the item,
+# and a missed day is skipped, never backfilled.
+name: News Brief
+mode: rolling
+template: brief
+prompt: prompt.md
+strict: false
+min_sources: 6
+# Every item carries the document that owns its claim and one account from
+# someone with no stake in it.
+per_item_sources:
+  primary: [1, null]
+  secondary: [1, null]
+cadence: daily

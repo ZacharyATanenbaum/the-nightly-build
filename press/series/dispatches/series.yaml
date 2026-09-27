@@ -1,0 +1,11 @@
+# Articles you asked for, on any subject, whenever you ask. nb duty never
+# schedules this series; every article in it started as a request.
+name: Dispatches
+mode: open
+cadence: manual
+template: article
+prompt: prompt.md
+strict: false
+min_sources: 5
+bands:
+  words: [800, 2500]

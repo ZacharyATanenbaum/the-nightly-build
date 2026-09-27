@@ -1,0 +1,12 @@
+# One longer read a day in whichever of its packages fits the material. Open:
+# the beat in prompt.md chooses the subject and the orchestrator chooses the
+# package, recorded per article in nb-meta.
+name: Feature
+mode: open
+templates: [article, paper]
+prompt: prompt.md
+strict: false
+min_sources: 5
+bands:
+  words: [800, 2500]
+cadence: daily
